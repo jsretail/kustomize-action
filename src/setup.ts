@@ -1,5 +1,5 @@
 import {getBinPath, resolveEnvVars} from './utils';
-import core from '@actions/core';
+import * as core from '@actions/core';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';

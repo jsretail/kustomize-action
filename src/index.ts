@@ -1,4 +1,4 @@
-import core = require('@actions/core');
+import * as core from '@actions/core';
 import YAML from 'yaml';
 import {buildActionLogger, buildConsoleLogger, Logger} from './logger';
 import kustomize from './kustomize';
@@ -18,7 +18,7 @@ import {
 import {runActions} from './outputs';
 
 const main = async () => {
-  const isAction = true; //!!process.env.GITHUB_WORKFLOW;
+  const isAction = !!process.env.GITHUB_WORKFLOW;
   const logger = isAction ? buildActionLogger() : buildConsoleLogger();
   if (!isAction) {
     logger.warn(
