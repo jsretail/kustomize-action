@@ -152,7 +152,7 @@ export const checkSecrets = (
 export const cleanUpYaml = (
   doc: YAML.Document,
   logger?: Logger
-): {doc:YAML.Document,modified:boolean} => {
+): {doc: YAML.Document; modified: boolean} => {
   let modified = false;
   descendInToProps(
     cleanElem(s => {
@@ -163,7 +163,7 @@ export const cleanUpYaml = (
     '',
     doc
   );
-  return {doc,modified};
+  return {doc, modified};
 };
 
 export const customValidation = (

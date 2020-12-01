@@ -81,13 +81,19 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     settings.verbose ? logger : undefined
   );
   output(logger, settings.verbose, 'Cleaning up YAML');
-  const {cleanedDocs,modified} = docs.reduce((a,d) =>{
-    const {doc,modified} = cleanUpYaml(d, settings.verbose ? logger : undefined)  ;
-    a.cleanedDocs.push(doc);
-    a.modified=a.modified||modified;
-    return a;
-  }, {cleanedDocs:<YAML.Document[]>[],modified:false});
-  if (!modified && settings.verbose){
+  const {cleanedDocs, modified} = docs.reduce(
+    (a, d) => {
+      const {doc, modified} = cleanUpYaml(
+        d,
+        settings.verbose ? logger : undefined
+      );
+      a.cleanedDocs.push(doc);
+      a.modified = a.modified || modified;
+      return a;
+    },
+    {cleanedDocs: <YAML.Document[]>[], modified: false}
+  );
+  if (!modified && settings.verbose) {
     logger.log('No changes required');
   }
   output(logger, settings.verbose, 'Checking for unencrypted secrets');
