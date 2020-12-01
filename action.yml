@@ -1,0 +1,33 @@
+name: 'Hello World'
+description: 'Greet someone and record the time'
+inputs:
+  kustomize-path:
+    description: 'Path to directory containing root kustomization.yaml. Relative to repo root.'
+    required: true
+    default: './'
+  output-actions:
+    description: 'Array of actions to take with the generated YAML. Currently the options are:\n{"type":"LoggerOutputAction","logErrors":true,"logYaml":true}\n{"type":"VariableOutputAction","outputVariableName":"thisIsAVariableInGitWorkflow","errorsVariableName":undefined}\n{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"$GITHUB_WORKSPACE/output.yml"}'
+    required: true
+    default: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+  extra-resources:
+    description: "Comma separated list of additional .yaml files to reference when running kustomize. E.g. if you have dev and test on the same cluster then you would want to include dev's YAML when building test or vice versa."
+    required: false
+  allowed-secrets:
+    description: 'Comma separated list of "namespace/secret" pairs that we allow to exist in the YAML.'
+    required: false
+  required-bins:
+    description: "Comma separated list of binaries to check for on start up."
+    required: false
+    default: 'kustomize,kubeval,helm'
+  verbose:
+    description: "Output detailed logging"
+    required: false
+    default: false
+outputs:
+  yaml:
+    description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'
+  errors:
+    description: 'Any errors (if VariableOutputAction.errorsVariableName is set)'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
