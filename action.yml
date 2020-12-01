@@ -1,4 +1,4 @@
-name: 'Kustomize'
+name: 'kustomize-automation'
 description: 'Run kustomize to generate YAML, clean up YAML to be accepted by Flux, Use kubeval to validate YAML. YAML can then be committed to repo.'
 inputs:
   kustomize-path:
