@@ -26,6 +26,14 @@ const main = async () => {
     );
   }
   try {
+    //TODO: Remove
+    console.log(process.env);
+    console.log(process.argv);
+    console.log(process.cwd());
+    logger.log(JSON.stringify(process.env));
+    logger.log(JSON.stringify(process.argv));
+    logger.log(process.cwd());
+
     const settings = getSettings(isAction);
     output(logger, settings.verbose, 'Parsing and validating settings');
     if (settings.verbose) {
@@ -51,7 +59,7 @@ const main = async () => {
     }
     logger.log('Finished');
   } catch (error) {
-    console.log(error.message);
+    console.log(error);
     logger.error(error.message);
   }
 };
