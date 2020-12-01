@@ -53,6 +53,10 @@ const main = async () => {
   } catch (error) {
     console.log(error);
     logger.error(error.message);
+    if (isAction) {
+      core.setFailed(error);
+    }
+    process.exit(1);
   }
 };
 
