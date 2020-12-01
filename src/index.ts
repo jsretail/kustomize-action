@@ -51,11 +51,8 @@ const main = async () => {
     }
     logger.log('Finished');
   } catch (error) {
-    if (isAction) {
-      console.error(error.message, +'a' + core.toString());
-    } else {
-      console.error(error.message);
-    }
+    console.log(error.message);
+    logger.error(error.message);
   }
 };
 
