@@ -22,12 +22,12 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      - name: kustomize-automation
-        uses: devjoes/kustomize-action@v0.0.1
-        with:
-          kustomize-path: ./example/input/dev
-          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
-          extra-resources: './example/output/test.yaml,./example/output/core-infra.yaml'
-          verbose: true
+        name: Checkout
+#      - name: kustomize-automation
+#        uses: devjoes/kustomize-action@v0.0.1
+#        with:
+#          kustomize-path: ./example/input/dev
+#          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+#          extra-resources: './example/output/test.yaml,./example/output/core-infra.yaml'
+#          verbose: true
