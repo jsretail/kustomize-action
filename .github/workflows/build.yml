@@ -52,15 +52,15 @@ jobs:
         cd -
         rm -Rf "$tmp"
         )
-    # To use this repository's private action,
-    # you must check out the repository
-    - name: Checkout
-      uses: actions/checkout@v2
     - name: Run action
       uses: ./
-      id: test
+      id: example
       with:
-        who-to-greet: 'Mona the Octocat'
-    # Use the output from the `hello` step
-    - name: Get the output time
-      run: echo "The time was ${{ steps.hello.outputs.time }}"
+        kustomize-path: ./example/input/dev
+        output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+        extra-resources: 
+        - ./example/output/test.yaml
+        - ./example/output/core-infra.yaml
+        verbose: true
+    - name: Output YAML
+      run: echo "Kustomize YAML ${{ steps.example.outputs.yaml }}"
