@@ -23043,25 +23043,6 @@ exports.customValidation = customValidation;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -23075,7 +23056,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__webpack_require__(2186));
 const yaml_1 = __importDefault(__webpack_require__(3552));
 const logger_1 = __webpack_require__(4636);
 const kustomize_1 = __importDefault(__webpack_require__(701));
@@ -23084,20 +23064,12 @@ const validation_1 = __importDefault(__webpack_require__(6722));
 const setup_1 = __webpack_require__(8429);
 const outputs_1 = __webpack_require__(1698);
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
-    const isAction = !!process.env.GITHUB_WORKFLOW;
+    const isAction = !!process.env.GITHUB_EVENT_NAME;
     const logger = isAction ? logger_1.buildActionLogger() : logger_1.buildConsoleLogger();
     if (!isAction) {
         logger.warn('Not running as action because GITHUB_WORKFLOW env var is not set');
     }
     try {
-        //TODO: Remove
-        console.log('core', core);
-        console.log(process.env);
-        console.log(process.argv);
-        console.log(process.cwd());
-        logger.log(JSON.stringify(process.env));
-        logger.log(JSON.stringify(process.argv));
-        logger.log(process.cwd());
         const settings = setup_1.getSettings(isAction);
         output(logger, settings.verbose, 'Parsing and validating settings');
         if (settings.verbose) {
@@ -23413,7 +23385,9 @@ class FileOutputAction {
             if (this.dontOutputIfErrored && errors.length) {
                 return res();
             }
-            const fileName = utils_1.resolveEnvVars(this.fileName);
+            const workspaceDir = utils_1.getWorkspaceRoot();
+            const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(workspaceDir, p);
+            const fileName = getPath(utils_1.resolveEnvVars(this.fileName));
             const writeToFile = () => {
                 const str = fs_1.createWriteStream(fileName, {
                     flags: this.fileOpenFlags
@@ -23598,7 +23572,8 @@ const getSettings = (isAction) => {
     const allowedSecrets = getSetting('allowed-secrets', 'ALLOWED_SECRETS');
     const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
     const verbose = getSetting('verbose', 'VERBOSE');
-    const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(__dirname, p);
+    const workspaceDir = utils_1.getWorkspaceRoot();
+    const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(workspaceDir, p);
     const defaultActions = `[
       { type: "LoggerOutputAction", logErrors: true, logYaml: false },
       {
@@ -23660,7 +23635,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getBinPath = exports.resolveEnvVars = void 0;
+exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const resolveEnvVars = (str) => str
@@ -23687,6 +23662,17 @@ const getBinPath = (bin) => new Promise(res => {
     }));
 });
 exports.getBinPath = getBinPath;
+const getWorkspaceRoot = () => {
+    const getParentGitDir = (parsed) => fs_1.default.existsSync(path_1.default.join(parsed.dir, parsed.name, '.git'))
+        ? path_1.default.join(parsed.dir, parsed.name)
+        : (parsed.dir !== parsed.root &&
+            getParentGitDir(path_1.default.parse(parsed.dir))) ||
+            undefined;
+    return (process.env['GITHUB_WORKSPACE'] ||
+        getParentGitDir(path_1.default.parse(process.cwd())) ||
+        process.cwd());
+};
+exports.getWorkspaceRoot = getWorkspaceRoot;
 
 
 /***/ }),
