@@ -8,7 +8,7 @@ require('./sourcemap-register.js');module.exports =
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.cleanUpYaml = exports.checkSecrets = exports.removeKustomizeValues = void 0;
+exports.customValidation = exports.cleanUpYaml = exports.checkSecrets = exports.removeKustomizeValues = void 0;
 const simplifyRam = (input) => {
     var _a, _b, _c;
     const units = 'kmgtp';
@@ -33,14 +33,14 @@ const simplifyRam = (input) => {
             (inUnit.length > 1 ? inUnit.substr(1) : '');
     return num + unit;
 };
-const cleanElem = (logger) => (elem, path) => {
+const cleanElem = (log) => (elem, path) => {
     if ((/\/(creationtimestamp|subresources|webhooks)$/.test(path) &&
         elem.value === null) ||
         (/\/(subresources|labels|annotations|status|ports)$/.test(path) &&
             (elem.value === null ||
                 elem.value.items == null ||
                 elem.value.items.length === 0))) {
-        logger === null || logger === void 0 ? void 0 : logger.log(`${path}\t\t: Removed`);
+        log(`${path}\t\t: Removed`);
         return true;
     }
     if (elem.value.type === 'PLAIN') {
@@ -51,7 +51,7 @@ const cleanElem = (logger) => (elem, path) => {
             else {
                 const newVal = elem.value.value.replace(/000m/, '');
                 if (elem.value.value !== newVal) {
-                    logger === null || logger === void 0 ? void 0 : logger.log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+                    log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
                     elem.value.value = newVal;
                 }
             }
@@ -59,7 +59,7 @@ const cleanElem = (logger) => (elem, path) => {
         if (path.endsWith('/limits/memory') || path.endsWith('/requests/memory')) {
             const newVal = simplifyRam(elem.value.value);
             if (elem.value.value !== newVal) {
-                logger === null || logger === void 0 ? void 0 : logger.log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+                log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
                 elem.value.value = newVal;
             }
         }
@@ -84,8 +84,17 @@ const descendInToProps = (func, elem, path, parentNode) => {
         children.map((e) => descendInToProps(func, e, curPath, elem.value));
     }
 };
-const removeKustomizeValues = (docs) => docs.filter(d => !(d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
-    d.get('kind') === 'Values'));
+const removeKustomizeValues = (docs, logger) => docs.filter(d => {
+    const toRemove = d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
+        d.get('kind') === 'Values';
+    if (toRemove) {
+        logger === null || logger === void 0 ? void 0 : logger.log(`Removing ${d.getIn(['metadata', 'namespace'])}/${d.getIn([
+            'metadata',
+            'name'
+        ])}`);
+    }
+    return !toRemove;
+});
 exports.removeKustomizeValues = removeKustomizeValues;
 //TODO: JS has sets
 const disjunctiveIntersectSecrets = (x, y) => x.filter(s => !!!y.find(a => a.namespace === s.namespace && a.name === s.name));
@@ -111,10 +120,26 @@ const checkSecrets = (docs, allowedSecrets, logger) => {
 };
 exports.checkSecrets = checkSecrets;
 const cleanUpYaml = (doc, logger) => {
-    descendInToProps(cleanElem(logger), doc.contents, '', doc);
-    return doc;
+    let modified = false;
+    descendInToProps(cleanElem(s => {
+        modified = true;
+        logger === null || logger === void 0 ? void 0 : logger.log(s);
+    }), doc.contents, '', doc);
+    return { doc, modified };
 };
 exports.cleanUpYaml = cleanUpYaml;
+const customValidation = (input, customValidation, logger) => {
+    logger === null || logger === void 0 ? void 0 : logger.log(JSON.stringify(customValidation, null, 2));
+    return customValidation
+        .filter(v => {
+        const m = v.regex.test(input);
+        const fail = m !== v.expected;
+        logger === null || logger === void 0 ? void 0 : logger.log(`${v.regex.source}	:${m ? 'Matched' : 'Not matched'}	${fail ? 'Fail ' : 'Pass'}`);
+        return fail;
+    })
+        .map(v => v.message);
+};
+exports.customValidation = customValidation;
 //# sourceMappingURL=cleanYaml.js.map
 
 /***/ }),
@@ -138,6 +163,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __importDefault(__webpack_require__(2186));
+const yaml_1 = __importDefault(__webpack_require__(3552));
 const logger_1 = __webpack_require__(5228);
 const kustomize_1 = __importDefault(__webpack_require__(4798));
 const cleanYaml_1 = __webpack_require__(5064);
@@ -151,17 +177,23 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         logger.warn('Not running as action because GITHUB_WORKFLOW env var is not set');
     }
     try {
-        logger.log('Parsing settings');
         const settings = setup_1.getSettings(isAction);
-        console.log(JSON.stringify(settings, null, 2));
+        output(logger, settings.verbose, 'Parsing and validating settings');
+        if (settings.verbose) {
+            console.log(yaml_1.default.stringify(settings));
+        }
         yield setup_1.validateSettings(settings);
-        logger.log('Validating environment (binaries etc)');
-        yield setup_1.validateEnvironment(settings.requiredBins);
+        output(logger, settings.verbose, 'Validating environment (binaries, plugin path etc)');
+        yield setup_1.validateEnvironment(settings.requiredBins, settings.verbose ? logger : undefined);
         const { yaml, errors } = yield getYaml(settings, logger);
-        yield outputs_1.runActions(yaml, errors, settings, logger);
+        if (settings.outputActions && settings.outputActions.length) {
+            output(logger, settings.verbose, 'Running output actions');
+            yield outputs_1.runActions(yaml, errors, settings, logger);
+        }
         if (errors.length) {
             throw new Error('Invalid yaml:\n' + errors.join('\n'));
         }
+        logger.log('Finished');
     }
     catch (error) {
         if (isAction) {
@@ -172,19 +204,66 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
 });
+const output = (logger, verbose, msg) => {
+    if (!verbose) {
+        logger.log(msg);
+        return;
+    }
+    logger.log('\n\n' + makeBox(msg));
+};
 const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function* () {
-    logger.log('Running kustomize');
+    output(logger, settings.verbose, 'Running kustomize');
     const resources = yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.verbose);
-    logger.log('Removing superfluous kustomize resources');
-    const docs = cleanYaml_1.removeKustomizeValues(resources);
-    logger.log('Cleaning up YAML');
-    const cleanedDocs = docs.map(d => cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined));
-    logger.log('Checking for unencrypted secrets');
+    output(logger, settings.verbose, 'Removing superfluous kustomize resources');
+    const docs = cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
+    output(logger, settings.verbose, 'Cleaning up YAML');
+    const { cleanedDocs, modified } = docs.reduce((a, d) => {
+        const { doc, modified } = cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined);
+        a.cleanedDocs.push(doc);
+        a.modified = a.modified || modified;
+        return a;
+    }, { cleanedDocs: [], modified: false });
+    if (!modified && settings.verbose) {
+        logger.log('No changes required');
+    }
+    output(logger, settings.verbose, 'Checking for unencrypted secrets');
     cleanYaml_1.checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
     const yaml = cleanedDocs.join(''); // The docs retain their --- when parsed
-    const errors = yield validation_1.default(yaml, logger);
+    output(logger, settings.verbose, 'Validating YAML');
+    let errors = yield validation_1.default(yaml, logger);
+    if (settings.customValidation.length) {
+        output(logger, settings.verbose, 'Running customValidation tests');
+        errors = errors.concat(cleanYaml_1.customValidation(yaml, settings.customValidation, settings.verbose ? logger : undefined));
+    }
     return { yaml, errors: errors.filter(e => e !== undefined) };
 });
+const makeBox = (title, minLen = 40, maxLen = 80, xPadding = 3, yPadding = 1) => {
+    const tl = '\u2554', h = '\u2550', tr = '\u2557', v = '\u2551', bl = '\u255A', br = '\u255D';
+    const wrap = (s, w) => s.split(/\s+/g).reduce((a, i) => {
+        if (a.length === 0 || a[a.length - 1].length + i.length + 1 > w) {
+            a.push('');
+        }
+        a[a.length - 1] += i + ' ';
+        return a;
+    }, []);
+    const range = (n) => Array.from(Array(n).keys());
+    const lines = wrap(title, maxLen);
+    const width = lines.reduce((a, i) => (i.length > a ? i.length : a), minLen);
+    const top = tl.padEnd(width + xPadding * 2, h) + tr;
+    const empty = v.padEnd(width + xPadding * 2, ' ') + v;
+    const text = lines.map(l => v.padEnd(xPadding, ' ') +
+        (''.padEnd((width - l.length) / 2 + 1) + l).padEnd(width, ' ') +
+        ''.padEnd(xPadding, ' ') +
+        v);
+    const bottom = bl.padEnd(width + xPadding * 2, h) + br;
+    return [
+        top,
+        ...range(yPadding).map(_ => empty),
+        ...text,
+        ...range(yPadding).map(_ => empty),
+        bottom
+    ].join('\n');
+};
 main();
 //# sourceMappingURL=index.js.map
 
@@ -216,11 +295,11 @@ const yaml_1 = __importDefault(__webpack_require__(3552));
 const runKustomize = (rootPath, logger, verbose, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((res, rej) => {
         const args = ['build', rootPath, '--enable_alpha_plugins'];
-        logger.log([binPath || 'kustomize', ...args].join(' '));
+        logger.log('Running: ' + [binPath || 'kustomize', ...args].join(' '));
         child_process_1.execFile(binPath || 'kustomize', args, (err, stdOut, stdErr) => {
-            if (verbose) {
-                logger.log(stdOut);
-            }
+            // if (verbose) {
+            //   logger.log(stdOut);
+            // }
             if (stdErr && stdErr.length) {
                 logger.error(stdErr);
             }
@@ -426,8 +505,11 @@ class FileOutputAction {
 }
 exports.FileOutputAction = FileOutputAction;
 const runActions = (yaml, errors, settings, logger) => __awaiter(void 0, void 0, void 0, function* () {
-    const actions = settings.outputActions || [];
+    const actions = settings.outputActions;
     for (let i = 0; i < actions.length; i++) {
+        if (settings.verbose) {
+            logger.log('Invoking ' + actions[i].type);
+        }
         yield actions[i].invoke(yaml, errors, settings, logger);
     }
 });
@@ -473,18 +555,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.validateSettings = exports.getSettings = exports.parseAllowedSecrets = exports.createKustomizeFolder = exports.validateEnvironment = void 0;
+exports.validateSettings = exports.getSettings = exports.parseCustomValidation = exports.parseAllowedSecrets = exports.createKustomizeFolder = exports.validateEnvironment = void 0;
 const utils_1 = __webpack_require__(918);
 const core_1 = __importDefault(__webpack_require__(2186));
 const dotenv_1 = __importDefault(__webpack_require__(2437));
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const outputs_1 = __webpack_require__(5314);
-const validateEnvironment = (required = ['kustomize', 'kubeval', 'helm']) => __awaiter(void 0, void 0, void 0, function* () {
+const validateEnvironment = (required = ['kustomize', 'kubeval', 'helm'], logger) => __awaiter(void 0, void 0, void 0, function* () {
     return Promise.all(required
         .map(b => new Promise((res, rej) => {
         utils_1.getBinPath(b).then(path => {
             if (path) {
+                logger === null || logger === void 0 ? void 0 : logger.log('Found ' + b + ' at ' + path);
                 res(undefined);
             }
             else {
@@ -504,16 +587,43 @@ const createKustomizeFolder = () => new Promise(r => {
         dir = path_1.default.join(process.env['XDG_CONFIG_HOME'], 'kustomize', 'plugin');
     }
     else {
-        dir = path_1.default.join(process.env['XDG_CONFIG_HOME'] || '~', 'kustomize', 'plugin');
+        dir = path_1.default.join(process.env['HOME'], 'kustomize', 'plugin');
     }
     fs_1.default.promises.mkdir(dir, { recursive: true }).finally(r);
 });
 exports.createKustomizeFolder = createKustomizeFolder;
 const parseAllowedSecrets = (secretString) => secretString
     .split(/,/g)
+    .map(s => s.trim())
     .filter(i => i.indexOf('/') > -1)
     .map(i => ({ namespace: i.split(/\//)[0], name: i.split(/\//)[1] }));
 exports.parseAllowedSecrets = parseAllowedSecrets;
+const parseCustomValidation = (customValidation) => customValidation
+    ? customValidation
+        .split(/(?<!\\)\n/g)
+        .map(i => i.split(/\|/g))
+        .map(i => {
+        if (i.length >= 3) {
+            const parseRx = (str) => {
+                const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
+                const match = rx.exec(str);
+                if (!match) {
+                    throw new Error('Invalid regex: ' + str);
+                }
+                return match[1]
+                    ? new RegExp(match[1])
+                    : new RegExp(match[2], match[3]);
+            };
+            return {
+                message: i.shift(),
+                expected: i.shift().toLowerCase() === 'true',
+                regex: parseRx(i.join('|'))
+            };
+        }
+        throw new Error('Invalid custom validation rule "' + i + '": ' + JSON.stringify(i));
+    })
+    : [];
+exports.parseCustomValidation = parseCustomValidation;
 const getSettings = (isAction) => {
     if (!isAction) {
         dotenv_1.default.config();
@@ -532,7 +642,7 @@ const getSettings = (isAction) => {
     const kustomizePath = getSetting('kustomize-path', 'KUSTOMIZE_PATH', true);
     const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
     const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
-    const shouldDeploy = getSetting('should-deploy', 'SHOULD_DEPLOY', true);
+    const customValidation = getSetting('validation-regexps', 'VALIDATION_REGEXPS', false);
     const allowedSecrets = getSetting('allowed-secrets', 'ALLOWED_SECRETS');
     const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
     const verbose = getSetting('verbose', 'VERBOSE');
@@ -550,13 +660,18 @@ const getSettings = (isAction) => {
         kustomizePath: getPath(utils_1.resolveEnvVars(kustomizePath || '.')),
         outputActions: outputs_1.parseActions(outputActions || defaultActions),
         extraResources: extraResources
-            ? utils_1.resolveEnvVars(extraResources).split(',').map(getPath)
+            ? utils_1.resolveEnvVars(extraResources)
+                .split(',')
+                .map(s => s.trim())
+                .map(getPath)
             : [],
-        shouldDeploy: utils_1.resolveEnvVars(shouldDeploy).toLowerCase() === 'true',
+        customValidation: exports.parseCustomValidation(customValidation),
         allowedSecrets: exports.parseAllowedSecrets(utils_1.resolveEnvVars(allowedSecrets || '')),
         verbose: utils_1.resolveEnvVars(verbose || '').toLowerCase() === 'true',
         requiredBins: requiredBins
-            ? utils_1.resolveEnvVars(requiredBins).split(/,/g)
+            ? utils_1.resolveEnvVars(requiredBins)
+                .split(/,/g)
+                .map(s => s.trim())
             : ['kustomize', 'kubeval', 'helm']
     };
 };
