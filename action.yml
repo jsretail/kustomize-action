@@ -1,5 +1,5 @@
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'Kustomize'
+description: 'Run kustomize to generate YAML, clean up YAML to be accepted by Flux, Use kubeval to validate YAML. YAML can then be committed to repo.'
 inputs:
   kustomize-path:
     description: 'Path to directory containing root kustomization.yaml. Relative to repo root.'
