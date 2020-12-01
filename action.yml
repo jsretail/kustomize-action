@@ -1,5 +1,8 @@
 name: 'kustomize-automation'
 description: 'Run kustomize, clean up YAML for Flux, validate YAML with kubeval. YAML can then be committed/released.'
+branding:
+  icon: anchor
+  color: blue
 inputs:
   kustomize-path:
     description: 'Path to directory containing root kustomization.yaml. Relative to repo root.'
