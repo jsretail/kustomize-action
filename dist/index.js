@@ -162,7 +162,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core_1 = __importDefault(__webpack_require__(2186));
 const yaml_1 = __importDefault(__webpack_require__(3552));
 const logger_1 = __webpack_require__(5228);
 const kustomize_1 = __importDefault(__webpack_require__(4798));
@@ -196,12 +195,8 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         logger.log('Finished');
     }
     catch (error) {
-        if (isAction) {
-            console.error(error.message, +'a' + core_1.default.toString());
-        }
-        else {
-            console.error(error.message);
-        }
+        console.log(error.message);
+        logger.error(error.message);
     }
 });
 const output = (logger, verbose, msg) => {
