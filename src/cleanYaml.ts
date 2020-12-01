@@ -27,7 +27,7 @@ const simplifyRam = (input: string): string => {
   return num + unit;
 };
 
-const cleanElem = (logger: Logger | undefined) => (elem: any, path: string) => {
+const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
   if (
     (/\/(creationtimestamp|subresources|webhooks)$/.test(path) &&
       elem.value === null) ||
@@ -36,7 +36,7 @@ const cleanElem = (logger: Logger | undefined) => (elem: any, path: string) => {
         elem.value.items == null ||
         elem.value.items.length === 0))
   ) {
-    logger?.log(`${path}\t\t: Removed`);
+    log(`${path}\t\t: Removed`);
     return true;
   }
 
@@ -47,9 +47,7 @@ const cleanElem = (logger: Logger | undefined) => (elem: any, path: string) => {
       } else {
         const newVal = elem.value.value.replace(/000m/, '');
         if (elem.value.value !== newVal) {
-          logger?.log(
-            `${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`
-          );
+          log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
           elem.value.value = newVal;
         }
       }
@@ -57,9 +55,7 @@ const cleanElem = (logger: Logger | undefined) => (elem: any, path: string) => {
     if (path.endsWith('/limits/memory') || path.endsWith('/requests/memory')) {
       const newVal = simplifyRam(elem.value.value);
       if (elem.value.value !== newVal) {
-        logger?.log(
-          `${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`
-        );
+        log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
         elem.value.value = newVal;
       }
     }
@@ -91,16 +87,26 @@ const descendInToProps = (
   }
 };
 
-export const removeKustomizeValues = (docs: YAML.Document[]): YAML.Document[] =>
-  docs.filter(
-    d =>
-      !(
-        d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
-        d.get('kind') === 'Values'
-      )
-  );
+export const removeKustomizeValues = (
+  docs: YAML.Document[],
+  logger: Logger | undefined
+): YAML.Document[] =>
+  docs.filter(d => {
+    const toRemove =
+      d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
+      d.get('kind') === 'Values';
+    if (toRemove) {
+      logger?.log(
+        `Removing ${d.getIn(['metadata', 'namespace'])}/${d.getIn([
+          'metadata',
+          'name'
+        ])}`
+      );
+    }
+    return !toRemove;
+  });
 
-  //TODO: JS has sets
+//TODO: JS has sets
 const disjunctiveIntersectSecrets = (
   x: {namespace: string; name: string}[],
   y: {namespace: string; name: string}[]
@@ -146,7 +152,36 @@ export const checkSecrets = (
 export const cleanUpYaml = (
   doc: YAML.Document,
   logger?: Logger
-): YAML.Document => {
-  descendInToProps(cleanElem(logger), doc.contents, '', doc);
-  return doc;
+): {doc:YAML.Document,modified:boolean} => {
+  let modified = false;
+  descendInToProps(
+    cleanElem(s => {
+      modified = true;
+      logger?.log(s);
+    }),
+    doc.contents,
+    '',
+    doc
+  );
+  return {doc,modified};
+};
+
+export const customValidation = (
+  input: string,
+  customValidation: {regex: RegExp; expected: boolean; message: string}[],
+  logger: Logger | undefined
+): string[] => {
+  logger?.log(JSON.stringify(customValidation, null, 2));
+  return customValidation
+    .filter(v => {
+      const m = v.regex.test(input);
+      const fail = m !== v.expected;
+      logger?.log(
+        `${v.regex.source}	:${m ? 'Matched' : 'Not matched'}	${
+          fail ? 'Fail ' : 'Pass'
+        }`
+      );
+      return fail;
+    })
+    .map(v => v.message);
 };

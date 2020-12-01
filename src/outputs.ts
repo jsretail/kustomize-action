@@ -3,7 +3,7 @@ import path from 'path';
 import {createWriteStream, fstat, promises} from 'fs';
 import {Logger} from './logger';
 import {Settings} from './setup';
-import { resolveEnvVars } from './utils';
+import {resolveEnvVars} from './utils';
 
 export interface OutputAction {
   type: string;
@@ -95,8 +95,11 @@ export const runActions = async (
   settings: Settings,
   logger: Logger
 ) => {
-  const actions = settings.outputActions || [];
+  const actions = settings.outputActions;
   for (let i = 0; i < actions.length; i++) {
+    if (settings.verbose) {
+      logger.log('Invoking ' + actions[i].type);
+    }
     await actions[i].invoke(yaml, errors, settings, logger);
   }
 };

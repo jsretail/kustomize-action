@@ -1,7 +1,12 @@
 import YAML from 'yaml';
-import {cleanUpYaml, removeKustomizeValues, checkSecrets} from './cleanYaml';
+import {
+  cleanUpYaml,
+  removeKustomizeValues,
+  checkSecrets,
+  customValidation
+} from './cleanYaml';
 import {buildTestLogger} from './logger';
-import {parseAllowedSecrets} from './setup';
+import {parseAllowedSecrets, parseCustomValidation} from './setup';
 
 const createSecret = (ns: string, name: string) =>
   YAML.parseDocument(`
@@ -113,14 +118,17 @@ describe('cleanYaml', () => {
   test('cleans up YAML', () => {
     const input = YAML.parseDocument(dirtyYaml);
     const result = cleanUpYaml(input);
-    expect(result.toString()).toEqual(YAML.parseDocument(cleanYaml).toString());
+    expect(result.doc.toString()).toEqual(
+      YAML.parseDocument(cleanYaml).toString()
+    );
+    expect(result.modified).toBeTruthy();
   });
   test('removeKustomizeValues removes "kind: Values" documents', () => {
     const input = [
       YAML.parseDocument(cleanYaml),
       YAML.parseDocument(valuesYaml)
     ];
-    const result = removeKustomizeValues(input);
+    const result = removeKustomizeValues(input, buildTestLogger());
     expect(result).toHaveLength(1);
     expect(result[0].toString()).toEqual(
       YAML.parseDocument(cleanYaml).toString()
@@ -164,5 +172,24 @@ describe('cleanYaml', () => {
         logger
       )
     ).toThrow();
+  });
+
+  const rules = parseCustomValidation(
+    `Contains oof or foo|true|/oof|foo/
+Contains \\n bar or bar pipe|true|/\\nbar\\|?/
+Doesnt contain baz|false|/baz/`
+  );
+  const logger = buildTestLogger();
+  test('Custom validation passes', () => {
+    expect(customValidation('foo\nbar', rules, logger)).toHaveLength(0);
+    expect(customValidation('oof\nbar\\|', rules, logger)).toHaveLength(0);
+  });
+  test('Custom validation fails', () => {
+    expect(customValidation('fo\nba', rules, logger)).toHaveLength(2);
+    expect(customValidation('\nbar|', rules, logger)).toHaveLength(1);
+    expect(customValidation('baz', rules, logger)).toHaveLength(3);
+    expect(customValidation('foo\nbarbaz', rules, logger)).toEqual([
+      'Doesnt contain baz'
+    ]);
   });
 });

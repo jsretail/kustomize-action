@@ -4,9 +4,11 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import {OutputAction, parseActions} from './outputs';
+import {Logger} from './logger';
 
 export const validateEnvironment = async (
-  required: string[] = ['kustomize', 'kubeval', 'helm']
+  required: string[] = ['kustomize', 'kubeval', 'helm'],
+  logger: Logger | undefined
 ): Promise<unknown> =>
   Promise.all(
     required
@@ -15,6 +17,7 @@ export const validateEnvironment = async (
           new Promise((res, rej) => {
             getBinPath(b).then(path => {
               if (path) {
+                logger?.log('Found ' + b + ' at ' + path);
                 res(undefined);
               } else {
                 rej(b + ' is required');
@@ -32,11 +35,7 @@ export const createKustomizeFolder = () =>
     } else if (process.env['XDG_CONFIG_HOME']) {
       dir = path.join(process.env['XDG_CONFIG_HOME'], 'kustomize', 'plugin');
     } else {
-      dir = path.join(
-        process.env['XDG_CONFIG_HOME'] || '~',
-        'kustomize',
-        'plugin'
-      );
+      dir = path.join(process.env['HOME']!, 'kustomize', 'plugin');
     }
     fs.promises.mkdir(dir, {recursive: true}).finally(r);
   });
@@ -47,7 +46,7 @@ export type Settings = {
   verbose: boolean;
   outputActions: OutputAction[];
   extraResources: string[];
-  shouldDeploy: boolean;
+  customValidation: {regex: RegExp; expected: boolean; message: string}[];
   requiredBins: string[];
   //environment: string; //TODO: I think that this has basically been replaced by kustomizePath and outputPath?
   //token: string;//TODO: Required? Only if running outside of github
@@ -63,8 +62,39 @@ export type Settings = {
 export const parseAllowedSecrets = (secretString: string) =>
   secretString
     .split(/,/g)
+    .map(s => s.trim())
     .filter(i => i.indexOf('/') > -1)
     .map(i => ({namespace: i.split(/\//)[0], name: i.split(/\//)[1]}));
+
+export const parseCustomValidation = (customValidation: string | undefined) =>
+  customValidation
+    ? customValidation
+        .split(/(?<!\\)\n/g)
+        .map(i => i.split(/\|/g))
+        .map(i => {
+          if (i.length >= 3) {
+            const parseRx = (str: string) => {
+              const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
+              const match = rx.exec(str);
+              if (!match) {
+                throw new Error('Invalid regex: ' + str);
+              }
+              return match[1]
+                ? new RegExp(match[1])
+                : new RegExp(match[2], match[3]);
+            };
+
+            return {
+              message: i.shift()!,
+              expected: i.shift()!.toLowerCase() === 'true',
+              regex: parseRx(i.join('|'))
+            };
+          }
+          throw new Error(
+            'Invalid custom validation rule "' + i + '": ' + JSON.stringify(i)
+          );
+        })
+    : [];
 
 export const getSettings = (isAction: boolean): Settings => {
   if (!isAction) {
@@ -90,11 +120,15 @@ export const getSettings = (isAction: boolean): Settings => {
   const kustomizePath = getSetting('kustomize-path', 'KUSTOMIZE_PATH', true);
   const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
   const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
-  const shouldDeploy = getSetting('should-deploy', 'SHOULD_DEPLOY', true);
+  const customValidation = getSetting(
+    'validation-regexps',
+    'VALIDATION_REGEXPS',
+    false
+  );
   const allowedSecrets = getSetting('allowed-secrets', 'ALLOWED_SECRETS');
   const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
   const verbose = getSetting('verbose', 'VERBOSE');
-  
+
   const getPath = (p: string) =>
     path.isAbsolute(p) ? p : path.join(__dirname, p);
 
@@ -111,13 +145,18 @@ export const getSettings = (isAction: boolean): Settings => {
     kustomizePath: getPath(resolveEnvVars(kustomizePath || '.')),
     outputActions: parseActions(outputActions || defaultActions),
     extraResources: extraResources
-      ? resolveEnvVars(extraResources).split(',').map(getPath)
+      ? resolveEnvVars(extraResources)
+          .split(',')
+          .map(s => s.trim())
+          .map(getPath)
       : [],
-    shouldDeploy: resolveEnvVars(shouldDeploy).toLowerCase() === 'true',
+    customValidation: parseCustomValidation(customValidation),
     allowedSecrets: parseAllowedSecrets(resolveEnvVars(allowedSecrets || '')),
     verbose: resolveEnvVars(verbose || '').toLowerCase() === 'true',
     requiredBins: requiredBins
-      ? resolveEnvVars(requiredBins).split(/,/g)
+      ? resolveEnvVars(requiredBins)
+          .split(/,/g)
+          .map(s => s.trim())
       : ['kustomize', 'kubeval', 'helm']
   };
 };

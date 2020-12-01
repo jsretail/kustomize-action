@@ -2,13 +2,12 @@ import fs from 'fs';
 import path from 'path';
 
 export const resolveEnvVars = (str: string | undefined) =>
-str
-  ? str.replace(
-      /(?<!\\)\$([A-Z_]+[A-Z0-9_]*)|(?<!\\)\${([A-Z0-9_]*)}/gi,
-      (_, a, b) => process.env[a || b] || ''
-    )
-  : '';
-
+  str
+    ? str.replace(
+        /(?<!\\)\$([A-Z_]+[A-Z0-9_]*)|(?<!\\)\${([A-Z0-9_]*)}/gi,
+        (_, a, b) => process.env[a || b] || ''
+      )
+    : '';
 
 export const getBinPath = (bin: string): Promise<string | undefined> =>
   new Promise<string | undefined>(res => {

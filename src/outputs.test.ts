@@ -21,7 +21,7 @@ describe('output actions', () => {
     verbose: true,
     outputActions: [],
     extraResources: [],
-    shouldDeploy: true,
+    customValidation: [],
     requiredBins: []
   };
   const testYaml = `
@@ -193,7 +193,15 @@ foo:
     });
 
     await runActions(testYaml, testErrors, settingsWithTestActions, testLogger);
-    expect(logs).toEqual(['logger A', 'logger B', 'logger C']);
+    const verboseMsg = 'Invoking TestOutputAction';
+    expect(logs).toEqual([
+      verboseMsg,
+      'logger A',
+      verboseMsg,
+      'logger B',
+      verboseMsg,
+      'logger C'
+    ]);
     expect.assertions(4 * settingsWithTestActions.outputActions.length + 1);
   });
 });
