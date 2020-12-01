@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import path, {ParsedPath} from 'path';
 
 export const resolveEnvVars = (str: string | undefined) =>
   str
@@ -34,3 +34,18 @@ export const getBinPath = (bin: string): Promise<string | undefined> =>
       })
     );
   });
+
+export const getWorkspaceRoot = () => {
+  const getParentGitDir = (parsed: ParsedPath): string | undefined =>
+    fs.existsSync(path.join(parsed.dir, parsed.name, '.git'))
+      ? path.join(parsed.dir, parsed.name)
+      : (parsed.dir !== parsed.root &&
+          getParentGitDir(path.parse(parsed.dir))) ||
+        undefined;
+
+  return (
+    process.env['GITHUB_WORKSPACE'] ||
+    getParentGitDir(path.parse(process.cwd())) ||
+    process.cwd()
+  );
+};

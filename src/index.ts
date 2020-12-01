@@ -18,7 +18,7 @@ import {
 import {runActions} from './outputs';
 
 const main = async () => {
-  const isAction = !!process.env.GITHUB_WORKFLOW;
+  const isAction = !!process.env.GITHUB_EVENT_NAME;
   const logger = isAction ? buildActionLogger() : buildConsoleLogger();
   if (!isAction) {
     logger.warn(
@@ -26,15 +26,6 @@ const main = async () => {
     );
   }
   try {
-    //TODO: Remove
-    console.log('core', core);
-    console.log(process.env);
-    console.log(process.argv);
-    console.log(process.cwd());
-    logger.log(JSON.stringify(process.env));
-    logger.log(JSON.stringify(process.argv));
-    logger.log(process.cwd());
-
     const settings = getSettings(isAction);
     output(logger, settings.verbose, 'Parsing and validating settings');
     if (settings.verbose) {

@@ -3,7 +3,7 @@ import path from 'path';
 import {createWriteStream, fstat, promises} from 'fs';
 import {Logger} from './logger';
 import {Settings} from './setup';
-import {resolveEnvVars} from './utils';
+import {getWorkspaceRoot, resolveEnvVars} from './utils';
 
 export interface OutputAction {
   type: string;
@@ -65,7 +65,10 @@ export class FileOutputAction implements OutputAction {
       if (this.dontOutputIfErrored && errors.length) {
         return res();
       }
-      const fileName = resolveEnvVars(this.fileName);
+      const workspaceDir = getWorkspaceRoot();
+      const getPath = (p: string) =>
+        path.isAbsolute(p) ? p : path.join(workspaceDir, p);    
+      const fileName = getPath(resolveEnvVars(this.fileName));
       const writeToFile = () => {
         const str = createWriteStream(fileName, {
           flags: this.fileOpenFlags

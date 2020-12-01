@@ -96,6 +96,37 @@ foo:
       expect(fs.readFileSync(tmpFile).toString()).toEqual(testYaml);
     });
 
+    test('writes to relative path', async () => {
+      const action = new FileOutputAction();
+      action.createDirIfMissing = true;
+      action.fileOpenFlags = 'w';
+      const tmpDir = tmp.dirSync({
+        unsafeCleanup:true
+      });
+      const tmpPath = path.join(tmpDir.name, '/root/foo-XXXXX/bar/baz');
+      fs.mkdirSync(path.dirname(tmpPath), {recursive: true});
+      fs.mkdirSync(path.join(tmpDir.name, 'root', '.git'), {
+        recursive: true
+      });
+      action.fileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
+      const origPath = process.cwd();
+      process.chdir(path.dirname(tmpPath));
+      try {
+        if (process.env['GITHUB_WORKSPACE']){
+          delete process.env['GITHUB_WORKSPACE'] ;
+        };
+        await action.invoke(
+          testYaml,
+          testErrors,
+          testSettings,
+          buildTestLogger()
+        );
+      } finally {
+        process.chdir(origPath);
+      }
+      expect(fs.readFileSync(tmpPath).toString()).toEqual(testYaml);
+    });
+
     test("doesn't write file if error occurred", async () => {
       const action = new FileOutputAction();
       const tmpFile = tmp.tmpNameSync({

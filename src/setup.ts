@@ -1,7 +1,7 @@
-import {getBinPath, resolveEnvVars} from './utils';
+import {getBinPath, getWorkspaceRoot, resolveEnvVars} from './utils';
 import * as core from '@actions/core';
 import dotenv from 'dotenv';
-import fs from 'fs';
+import fs, { PathLike } from 'fs';
 import path from 'path';
 import {OutputAction, parseActions} from './outputs';
 import {Logger} from './logger';
@@ -116,7 +116,7 @@ export const getSettings = (isAction: boolean): Settings => {
     isAction
       ? core.getInput(actionSettingName, {required: required})
       : (required ? getRequiredFromEnv : getFromEnv)(envVarName);
-
+  
   const kustomizePath = getSetting('kustomize-path', 'KUSTOMIZE_PATH', true);
   const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
   const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
@@ -129,8 +129,9 @@ export const getSettings = (isAction: boolean): Settings => {
   const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
   const verbose = getSetting('verbose', 'VERBOSE');
 
+  const workspaceDir = getWorkspaceRoot();
   const getPath = (p: string) =>
-    path.isAbsolute(p) ? p : path.join(__dirname, p);
+    path.isAbsolute(p) ? p : path.join(workspaceDir, p);
 
   const defaultActions = `[
       { type: "LoggerOutputAction", logErrors: true, logYaml: false },
