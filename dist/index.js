@@ -23113,9 +23113,11 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         console.log(error);
         logger.error(error.message);
         if (isAction) {
-            core.setFailed(error);
+            core.setFailed(error.message);
         }
-        process.exit(1);
+        else {
+            process.exit(1);
+        }
     }
 });
 const output = (logger, verbose, msg) => {
