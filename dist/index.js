@@ -23083,6 +23083,7 @@ const cleanYaml_1 = __webpack_require__(7549);
 const validation_1 = __importDefault(__webpack_require__(6722));
 const setup_1 = __webpack_require__(8429);
 const outputs_1 = __webpack_require__(1698);
+const utils_1 = __webpack_require__(1314);
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const isAction = !!process.env.GITHUB_EVENT_NAME;
     const logger = isAction ? logger_1.buildActionLogger() : logger_1.buildConsoleLogger();
@@ -23122,7 +23123,7 @@ const output = (logger, verbose, msg) => {
         logger.log(msg);
         return;
     }
-    logger.log('\n\n' + makeBox(msg));
+    logger.log('\n\n' + utils_1.makeBox(msg));
 };
 const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function* () {
     output(logger, settings.verbose, 'Running kustomize');
@@ -23150,33 +23151,6 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
     }
     return { yaml, errors: errors.filter(e => e !== undefined) };
 });
-const makeBox = (title, minLen = 40, maxLen = 80, xPadding = 3, yPadding = 1) => {
-    const tl = '\u2554', h = '\u2550', tr = '\u2557', v = '\u2551', bl = '\u255A', br = '\u255D';
-    const wrap = (s, w) => s.split(/\s+/g).reduce((a, i) => {
-        if (a.length === 0 || a[a.length - 1].length + i.length + 1 > w) {
-            a.push('');
-        }
-        a[a.length - 1] += i + ' ';
-        return a;
-    }, []);
-    const range = (n) => Array.from(Array(n).keys());
-    const lines = wrap(title, maxLen);
-    const width = lines.reduce((a, i) => (i.length > a ? i.length : a), minLen);
-    const top = tl.padEnd(width + xPadding * 2, h) + tr;
-    const empty = v.padEnd(width + xPadding * 2, ' ') + v;
-    const text = lines.map(l => v.padEnd(xPadding, ' ') +
-        (''.padEnd((width - l.length) / 2 + 1) + l).padEnd(width, ' ') +
-        ''.padEnd(xPadding, ' ') +
-        v);
-    const bottom = bl.padEnd(width + xPadding * 2, h) + br;
-    return [
-        top,
-        ...range(yPadding).map(_ => empty),
-        ...text,
-        ...range(yPadding).map(_ => empty),
-        bottom
-    ].join('\n');
-};
 main();
 
 
@@ -23414,7 +23388,8 @@ class FileOutputAction {
             const fileName = getPath(utils_1.resolveEnvVars(this.fileName));
             const writeToFile = () => {
                 const str = fs_1.createWriteStream(fileName, {
-                    flags: this.fileOpenFlags
+                    flags: this.fileOpenFlags,
+                    autoClose: true
                 });
                 str.on('error', rej);
                 str.write(yaml, err => (err ? rej(err) : str.end(res)));
@@ -23659,7 +23634,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
+exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const resolveEnvVars = (str) => str
@@ -23693,10 +23668,46 @@ const getWorkspaceRoot = () => {
             getParentGitDir(path_1.default.parse(parsed.dir))) ||
             undefined;
     return (process.env['GITHUB_WORKSPACE'] ||
-        getParentGitDir(path_1.default.parse(process.cwd())) ||
-        process.cwd());
+        getParentGitDir(path_1.default.parse(exports.mockedCwd())) ||
+        exports.mockedCwd());
 };
 exports.getWorkspaceRoot = getWorkspaceRoot;
+let curDirName = __dirname;
+const mockedCwd = (newDir) => {
+    if (newDir) {
+        curDirName = newDir;
+    }
+    return curDirName;
+};
+exports.mockedCwd = mockedCwd;
+const makeBox = (title, minLen = 40, maxLen = 80, xPadding = 3, yPadding = 1) => {
+    const tl = '\u2554', h = '\u2550', tr = '\u2557', v = '\u2551', bl = '\u255A', br = '\u255D';
+    const wrap = (s, w) => s.split(/\s+/g).reduce((a, i) => {
+        if (a.length === 0 || a[a.length - 1].length + i.length + 1 > w) {
+            a.push('');
+        }
+        a[a.length - 1] += i + ' ';
+        return a;
+    }, []);
+    const range = (n) => Array.from(Array(n).keys());
+    const lines = wrap(title, maxLen);
+    const width = lines.reduce((a, i) => (i.length > a ? i.length : a), minLen);
+    const top = tl.padEnd(width + xPadding * 2, h) + tr;
+    const empty = v.padEnd(width + xPadding * 2, ' ') + v;
+    const text = lines.map(line => v.padEnd(xPadding, ' ') +
+        (''.padEnd(Math.floor(width - line.length) / 2) + line).padEnd(width, ' ') +
+        ''.padEnd(xPadding, ' ') +
+        v);
+    const bottom = bl.padEnd(width + xPadding * 2, h) + br;
+    return [
+        top,
+        ...range(yPadding).map(_ => empty),
+        ...text,
+        ...range(yPadding).map(_ => empty),
+        bottom
+    ].join('\n');
+};
+exports.makeBox = makeBox;
 
 
 /***/ }),
