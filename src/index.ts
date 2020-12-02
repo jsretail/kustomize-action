@@ -16,7 +16,7 @@ import {
   validateSettings
 } from './setup';
 import {runActions} from './outputs';
-import { makeBox } from './utils';
+import {makeBox} from './utils';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
@@ -55,9 +55,10 @@ const main = async () => {
     console.log(error);
     logger.error(error.message);
     if (isAction) {
-      core.setFailed(error);
+      core.setFailed(error.message);
+    } else {
+      process.exit(1);
     }
-    process.exit(1);
   }
 };
 
