@@ -104,12 +104,11 @@ foo:
         unsafeCleanup:true
       });
       const tmpPath = path.join(tmpDir.name, '/root/foo-XXXXX/bar/baz');
-      fs.mkdirSync(path.dirname(tmpPath), {recursive: true});
       fs.mkdirSync(path.join(tmpDir.name, 'root', '.git'), {
         recursive: true
       });
       action.fileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
-      const origPath = process.cwd();
+      const origPath = __dirname;
       process.chdir(path.dirname(tmpPath));
       try {
         if (process.env['GITHUB_WORKSPACE']){

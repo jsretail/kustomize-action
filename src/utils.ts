@@ -45,7 +45,52 @@ export const getWorkspaceRoot = () => {
 
   return (
     process.env['GITHUB_WORKSPACE'] ||
-    getParentGitDir(path.parse(process.cwd())) ||
-    process.cwd()
+    getParentGitDir(path.parse(__dirname)) ||
+    __dirname
   );
+};
+
+export const makeBox = (
+  title: string,
+  minLen = 40,
+  maxLen = 80,
+  xPadding = 3,
+  yPadding = 1
+) => {
+  const tl = '\u2554',
+    h = '\u2550',
+    tr = '\u2557',
+    v = '\u2551',
+    bl = '\u255A',
+    br = '\u255D';
+  const wrap = (s: string, w: number) =>
+    s.split(/\s+/g).reduce((a: string[], i: string) => {
+      if (a.length === 0 || a[a.length - 1].length + i.length + 1 > w) {
+        a.push('');
+      }
+      a[a.length - 1] += i + ' ';
+      return a;
+    }, []);
+  const range = (n: number) => Array.from(Array(n).keys());
+  const lines = wrap(title, maxLen);
+  const width = lines.reduce((a, i) => (i.length > a ? i.length : a), minLen);
+
+  const top = tl.padEnd(width + xPadding * 2, h) + tr;
+  const empty = v.padEnd(width + xPadding * 2, ' ') + v;
+  const text = lines.map(
+    line =>
+      v.padEnd(xPadding, ' ') +
+      (''.padEnd((Math.floor(width - line.length) / 2))+line).padEnd(width, ' ') +
+      ''.padEnd(xPadding, ' ') +
+      v
+  );
+  const bottom = bl.padEnd(width + xPadding * 2, h) + br;
+
+  return [
+    top,
+    ...range(yPadding).map(_ => empty),
+    ...text,
+    ...range(yPadding).map(_ => empty),
+    bottom
+  ].join('\n');
 };
