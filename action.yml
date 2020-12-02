@@ -18,6 +18,9 @@ inputs:
   allowed-secrets:
     description: 'Comma separated list of "namespace/secret" pairs that we allow to exist in the YAML.'
     required: false
+  custom-validation-rules:
+    description: 'Comma separated list of "error message|required/forbidden|/regex/" e.g. "Dont commit passwords|false|/password|key/i,Owner must exist|true|/owner:/i".'
+    required: false
   required-bins:
     description: "Comma separated list of binaries to check for on start up."
     required: false

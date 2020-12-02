@@ -121,8 +121,8 @@ export const getSettings = (isAction: boolean): Settings => {
   const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
   const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
   const customValidation = getSetting(
-    'validation-regexps',
-    'VALIDATION_REGEXPS',
+    'custom-validation-rules',
+    'CUSTOM_VALIDATION_RULES',
     false
   );
   const allowedSecrets = getSetting('allowed-secrets', 'ALLOWED_SECRETS');
