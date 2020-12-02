@@ -1,0 +1,26 @@
+on:
+  push:
+    branches:
+    - master
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - run: npm install
+    - run: npm run all
+    - run: npm run package
+    - name: Commit dist
+      run: |
+        git config --global user.name "$GITHUB_ACTOR"
+        git config --global user.email action@github.com
+        msg="Commiting dist"
+        git add ./dist -f
+        if [[ -z $(git status --porcelain ./dist) ]]; then
+          echo "No changes."
+          exit 0
+        fi
+        git fetch --unshallow
+        git commit -m "$msg"
+        git push origin HEAD:$GITHUB_REF

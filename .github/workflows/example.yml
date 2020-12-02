@@ -1,0 +1,85 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Example
+
+on:
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      INPUT_PATH: "./example/input/dev"
+      EXTRA_RESOURCES: "./example/output/test.yaml,./example/output/core-infra.yaml"
+      OUTPUT_FILE: "./example/output/dev.yaml"
+    steps:
+      - name: Setup environment
+        run: |
+          mkdir -p "/tmp/tmp_${GITHUB_RUN_ID}/"
+          echo 'resources: [ main.yaml ]' > "/tmp/tmp_${GITHUB_RUN_ID}/kustomization.yaml"
+          export KUSTOMIZE_PLUGIN_HOME=/tmp/kustomize; mkdir -p $KUSTOMIZE_PLUGIN_HOME
+
+          (command -v kubeval && command -v kustomize && command -v helm) || (
+            tmp="$(mktemp -d)"
+            cd "$tmp"
+            wget https://get.helm.sh/helm-v3.4.1-linux-amd64.tar.gz &
+            wget https://github.com/instrumenta/kubeval/releases/download/0.15.0/kubeval-linux-amd64.tar.gz &
+            wget https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.5.4/kustomize_v3.5.4_linux_amd64.tar.gz &
+            wait < <( jobs -p)
+            for t in *.tar.gz; do
+              tar xvzf $t
+            done;
+            sudo mv kubeval kustomize linux-amd64/helm /usr/bin/
+            cd -
+            rm -Rf "$tmp"
+          )
+      - uses: actions/checkout@v2
+        name: Checkout
+      - name: build-environment
+        id: build_environment
+        uses: ./ #devjoes/kustomize-action@v0.0.2
+        with:
+          kustomize-path: $INPUT_PATH
+          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/tmp_${GITHUB_RUN_ID}/main.yaml"}]'
+          custom-validation-rules: "ERROR Found \"kind: azuresecrets\"|false|/kind:\\s*azuresecrets/i\nERROR Found \"kind: secretsealer\"|false|/kind:\\s*secretsealer/i\nERROR Found $(foo.bar) - looks like unreplaced kustomize verRef. If not then remove the .|false|/\\$\\([^\\)\\s]+\\.[^\\)\\s]+\\)/i"
+          verbose: true
+        continue-on-error: true
+      - name: test alongside other envs
+        id: integrate
+        if: success() && steps.build_environment.outcome == 'success'
+        uses: ./ #devjoes/kustomize-action@v0.0.2
+        with:
+          kustomize-path: /tmp/tmp_${GITHUB_RUN_ID}/
+          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"INTEGRATED_YAML","errorsVariableName":"ERRORS"}]'
+          extra-resources: $EXTRA_RESOURCES
+          verbose: true
+          # Everything should have been validated by this point - these are not needed and disabled for performance
+          validate-with-kubeval: false
+          kustomize-args: ""
+        continue-on-error: true
+      - name: Commit kustomize output
+        if: success() && steps.build_environment.outcome == 'success' && steps.integrate.outcome == 'success'
+        env:
+          YAML: "${{ steps.integrate.outputs.INTEGRATED_YAML }}"
+        run: |
+            git config --global user.name "$GITHUB_ACTOR"
+            git config --global user.email action@github.com
+            git fetch origin $GITHUB_BASE_REF
+            if [[ -n "$(git status --porcelain $GITHUB_BASE_REF -- $OUTPUT_FILE)" ]]; then
+              echo "Aborting - deployed YAML has changed. Please get latest changes from ${GITHUB_BASE_REF}."
+              exit 1
+            fi
+            mv /tmp/tmp_${GITHUB_RUN_ID}/main.yaml $OUTPUT_FILE
+            if [[ -z "$(git status --porcelain $GITHUB_BASE_REF -- $OUTPUT_FILE)" ]]; then
+              echo "No changes to commit."
+              exit 0
+            fi
+            git fetch --unshallow
+            git add $OUTPUT_FILE
+            git commit -m "Updated deployed YAML from $GITHUB_WORKFLOW"
+            git push origin HEAD:$GITHUB_HEAD_REF
+
+
+

@@ -1,0 +1,47 @@
+name: 'kustomize-automation'
+description: 'Run kustomize, clean up YAML for Flux, validate YAML with kubeval. YAML can then be committed/released.'
+branding:
+  icon: anchor
+  color: blue
+inputs:
+  kustomize-path:
+    description: 'Path to directory containing root kustomization.yaml. Relative to repo root.'
+    required: true
+    default: './'
+  output-actions:
+    description: 'Array of actions to take with the generated YAML. Currently the options are:\n{"type":"LoggerOutputAction","logErrors":true,"logYaml":true}\n{"type":"VariableOutputAction","outputVariableName":"thisIsAVariableInGitWorkflow","errorsVariableName":undefined}\n{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"$GITHUB_WORKSPACE/output.yml"}'
+    required: true
+    default: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+  extra-resources:
+    description: "Comma separated list of additional .yaml files to reference when running kustomize. E.g. if you have dev and test on the same cluster then you would want to include dev's YAML when building test or vice versa."
+    required: false
+  allowed-secrets:
+    description: 'Comma separated list of "namespace/secret" pairs that we allow to exist in the YAML.'
+    required: false
+  custom-validation-rules:
+    description: 'Newline separated list of "error message|required/forbidden|/regex/" e.g. "Dont commit passwords|false|/password|key/i\nOwner must exist|true|/owner:/i".'
+    required: false
+  required-bins:
+    description: "Comma separated list of binaries to check for on start up."
+    required: false
+    default: 'kustomize,kubeval,helm'
+  verbose:
+    description: "Output detailed logging"
+    required: false
+    default: false
+  validate-with-kubeval:
+    description: "Validates the YAML against schemas with kubeval"
+    required: false
+    default: true
+  kustomize-args:
+    description: "Arguments to run kustomize with"
+    required: false
+    default: "--enable_alpha_plugins"
+outputs:
+  yaml:
+    description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'
+  errors:
+    description: 'Any errors (if VariableOutputAction.errorsVariableName is set)'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
