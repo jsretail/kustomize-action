@@ -3,7 +3,7 @@
 name: Example
 
 on:
-  push:
+  pull_request:
     branches: [ master ]
     paths:
       - example
@@ -39,6 +39,7 @@ jobs:
         uses: ./ #devjoes/kustomize-action@v0.0.2
         with:
           kustomize-path: ./example/input/dev
-          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+          output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/${GITHUB_RUN_ID}_output"}]'
           extra-resources: './example/output/test.yaml,./example/output/core-infra.yaml'
-          verbose: true
+          verbose: false
+        continue-on-error: true
