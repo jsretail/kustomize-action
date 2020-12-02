@@ -58,7 +58,7 @@ spec:
             - --port=8080
             - --enableRiskyFeature=$(ENABLE_RISKY)
           env:
-            - name: TEST
+            - name: FOO
               value: foo
             - name: ALT_GREETING
               valueFrom:
