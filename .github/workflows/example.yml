@@ -58,6 +58,7 @@ jobs:
               echo "No changes to commit."
               exit 0
             fi
+            git fetch --unshallow
             git add ./example/output/dev.yaml
             git commit -m "Updated deployed YAML from $GITHUB_WORKFLOW"
             git push origin HEAD:$GITHUB_HEAD_REF
