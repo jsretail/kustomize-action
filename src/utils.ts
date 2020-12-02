@@ -45,9 +45,18 @@ export const getWorkspaceRoot = () => {
 
   return (
     process.env['GITHUB_WORKSPACE'] ||
-    getParentGitDir(path.parse(__dirname)) ||
-    __dirname
+    getParentGitDir(path.parse(mockedCwd())) ||
+    mockedCwd()
   );
+};
+
+let curDirName = __dirname;
+export const mockedCwd = (newDir? : string) :string=> 
+{
+  if (newDir){
+    curDirName = newDir;
+  }
+  return curDirName;
 };
 
 export const makeBox = (

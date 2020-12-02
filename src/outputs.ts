@@ -71,7 +71,8 @@ export class FileOutputAction implements OutputAction {
       const fileName = getPath(resolveEnvVars(this.fileName));
       const writeToFile = () => {
         const str = createWriteStream(fileName, {
-          flags: this.fileOpenFlags
+          flags: this.fileOpenFlags,
+          autoClose: true
         });
         str.on('error', rej);
         str.write(yaml, err => (err ? rej(err) : str.end(res)));

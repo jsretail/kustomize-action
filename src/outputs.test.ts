@@ -13,6 +13,7 @@ import {
   parseActions
 } from './outputs';
 import {Settings} from './setup';
+import { mockedCwd } from './utils';
 
 describe('output actions', () => {
   const testSettings: Settings = {
@@ -101,29 +102,34 @@ foo:
       action.createDirIfMissing = true;
       action.fileOpenFlags = 'w';
       const tmpDir = tmp.dirSync({
-        unsafeCleanup:true
+        unsafeCleanup: true,
+        keep: true
       });
-      const tmpPath = path.join(tmpDir.name, '/root/foo-XXXXX/bar/baz');
-      fs.mkdirSync(path.join(tmpDir.name, 'root', '.git'), {
-        recursive: true
-      });
-      action.fileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
-      const origPath = __dirname;
-      process.chdir(path.dirname(tmpPath));
       try {
-        if (process.env['GITHUB_WORKSPACE']){
-          delete process.env['GITHUB_WORKSPACE'] ;
-        };
-        await action.invoke(
-          testYaml,
-          testErrors,
-          testSettings,
-          buildTestLogger()
-        );
+        const tmpPath = path.join(tmpDir.name, '/root/foo-XXXXX/bar/baz');
+        fs.mkdirSync(path.join(tmpDir.name, 'root', '.git'), {
+          recursive: true
+        });
+        fs.mkdirSync(path.dirname(tmpPath), {recursive:true});
+        action.fileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
+        mockedCwd(path.dirname(tmpPath));
+        try {
+          if (process.env['GITHUB_WORKSPACE']) {
+            delete process.env['GITHUB_WORKSPACE'];
+          }
+          await action.invoke(
+            testYaml,
+            testErrors,
+            testSettings,
+            buildTestLogger()
+          );
+        } finally {
+          mockedCwd(__dirname)
+        }
+        expect(fs.readFileSync(tmpPath).toString()).toEqual(testYaml);
       } finally {
-        process.chdir(origPath);
+        tmpDir.removeCallback();
       }
-      expect(fs.readFileSync(tmpPath).toString()).toEqual(testYaml);
     });
 
     test("doesn't write file if error occurred", async () => {
