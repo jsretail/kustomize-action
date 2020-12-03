@@ -117,11 +117,7 @@ export const checkSecrets = (
     .filter(d => d.get('kind') === 'Secret')
     .map(s => s.get('metadata'))
     .map(m => ({name: m.get('name'), namespace: m.get('namespace')}));
-  if (secrets.length > allowedSecrets.length) {
-    throw new Error(
-      `Found ${secrets.length} secrets but only ${allowedSecrets.length} are allowed`
-    );
-  }
+  
   logger?.log(
     'Found secrets: ' + secrets.map(s => s.namespace + '/' + s.name).join(', ')
   );
@@ -138,6 +134,11 @@ export const checkSecrets = (
       `Invalid secrets: ${invalidSecrets
         .map(s => s.namespace + '/' + s.name)
         .join(', ')}`
+    );
+  }
+  if (secrets.length > allowedSecrets.length) {
+    throw new Error(
+      `Found ${secrets.length} secrets (${secrets.map(s => s.namespace + '/' + s.name)}) but only ${allowedSecrets.length} are allowed`
     );
   }
 };

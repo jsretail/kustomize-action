@@ -20,7 +20,7 @@ const runKustomize = async (
       {maxBuffer: 1024 * 1024 * 1024 * 10}, // If the YAML is bigger than this then we should probably write to disk
       (err, stdOut, stdErr) => {
         if (stdErr && stdErr.length) {
-          logger.error(stdErr);
+          logger.warn(stdErr);
         }
         if (err) {
           logger.error(err);
@@ -95,9 +95,7 @@ export default async (
 ): Promise<YAML.Document.Parsed[]> => {
   const {dir: tmpPath, cleanUp} = await prepDirectory(path, extraResources);
   const {stdOut} = await runKustomize(tmpPath, logger, kustomizeArgs, binPath);
-  // if (stdErr != '') {
-  //   throw new Error(stdErr);
-  // }
+
   cleanUp();
   return YAML.parseAllDocuments(stdOut, {prettyErrors: true});
 };
