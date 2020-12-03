@@ -23223,10 +23223,10 @@ ${extraResources.map(p => '- ' + path_1.default.basename(p)).join('\n')}
 `);
 exports.default = (path, extraResources = [], logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     const { dir: tmpPath, cleanUp } = yield prepDirectory(path, extraResources);
-    const { stdOut, stdErr } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
-    if (stdErr != '') {
-        throw new Error(stdErr);
-    }
+    const { stdOut } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
+    // if (stdErr != '') {
+    //   throw new Error(stdErr);
+    // }
     cleanUp();
     return yaml_1.default.parseAllDocuments(stdOut, { prettyErrors: true });
 });
