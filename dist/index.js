@@ -22890,12 +22890,13 @@ module.exports = {
 /***/ }),
 
 /***/ 7549:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.customValidation = exports.cleanUpYaml = exports.checkSecrets = exports.removeKustomizeValues = void 0;
+const utils_1 = __webpack_require__(1314);
 const simplifyRam = (input) => {
     var _a, _b, _c;
     const units = 'kmgtp';
@@ -22967,18 +22968,16 @@ const descendInToProps = (func, elem, path, parentNode) => {
         }
     }
     const children = elem.items || (elem.value && elem.value.items);
+    const parent = elem.value || elem;
     if (children) {
-        children.map((e) => descendInToProps(func, e, curPath, elem.value));
+        children.map((e) => descendInToProps(func, e, curPath, parent));
     }
 };
 const removeKustomizeValues = (docs, logger) => docs.filter(d => {
     const toRemove = d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
         d.get('kind') === 'Values';
     if (toRemove) {
-        logger === null || logger === void 0 ? void 0 : logger.log(`Removing ${d.getIn(['metadata', 'namespace'])}/${d.getIn([
-            'metadata',
-            'name'
-        ])}`);
+        logger === null || logger === void 0 ? void 0 : logger.log(`Removing ${utils_1.getLabel(d)}`);
     }
     return !toRemove;
 });
@@ -23007,6 +23006,7 @@ const checkSecrets = (docs, allowedSecrets, logger) => {
 exports.checkSecrets = checkSecrets;
 const cleanUpYaml = (doc, logger) => {
     let modified = false;
+    logger === null || logger === void 0 ? void 0 : logger.log('Processing ' + utils_1.getLabel(doc));
     descendInToProps(cleanElem(s => {
         modified = true;
         logger === null || logger === void 0 ? void 0 : logger.log(s);
@@ -23136,8 +23136,24 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
     }
     output(logger, settings.verbose, 'Checking for unencrypted secrets');
     cleanYaml_1.checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
-    const yaml = cleanedDocs.join(''); // The docs retain their --- when parsed
-    let errors = [];
+    const yaml = cleanedDocs
+        .map(d => {
+        if (d.errors.length) {
+            console.warn(`Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`);
+            return `# Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`;
+        }
+        return d.toString();
+    })
+        .join(''); // The docs retain their --- when parsed
+    let errors = cleanedDocs
+        .filter(d => d.errors.length)
+        .reduce((a, d) => {
+        const label = utils_1.getLabel(d);
+        d.errors.forEach(e => {
+            a.push(`${label} ${e.linePos} ${e.range}: ${e.message}`);
+        });
+        return a;
+    }, []);
     if (settings.validateWithKubeVal) {
         output(logger, settings.verbose, 'Validating YAML');
         errors = yield validation_1.default(yaml, logger);
@@ -23180,7 +23196,8 @@ const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(voi
     return new Promise((res, rej) => {
         const args = ['build', rootPath, ...kustomizeArgs.split(/\ +/g)];
         logger.log('Running: ' + [binPath || 'kustomize', ...args].join(' '));
-        child_process_1.execFile(binPath || 'kustomize', args, (err, stdOut, stdErr) => {
+        child_process_1.execFile(binPath || 'kustomize', args, { maxBuffer: 1024 * 1024 * 1024 * 10 }, // If the YAML is bigger than this then we should probably write to disk
+        (err, stdOut, stdErr) => {
             if (stdErr && stdErr.length) {
                 logger.error(stdErr);
             }
@@ -23633,7 +23650,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
+exports.getLabel = exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const resolveEnvVars = (str) => str
@@ -23707,6 +23724,8 @@ const makeBox = (title, minLen = 40, maxLen = 80, xPadding = 3, yPadding = 1) =>
     ].join('\n');
 };
 exports.makeBox = makeBox;
+const getLabel = (doc) => `${doc.getIn(['metadata', 'namespace']) || 'missing namespace'}/${doc.getIn(['metadata', 'name']) || 'missing name'} (${doc.get('kind') || 'missing kind'})`;
+exports.getLabel = getLabel;
 
 
 /***/ }),
