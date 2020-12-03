@@ -22988,9 +22988,6 @@ const checkSecrets = (docs, allowedSecrets, logger) => {
         .filter(d => d.get('kind') === 'Secret')
         .map(s => s.get('metadata'))
         .map(m => ({ name: m.get('name'), namespace: m.get('namespace') }));
-    if (secrets.length > allowedSecrets.length) {
-        throw new Error(`Found ${secrets.length} secrets but only ${allowedSecrets.length} are allowed`);
-    }
     logger === null || logger === void 0 ? void 0 : logger.log('Found secrets: ' + secrets.map(s => s.namespace + '/' + s.name).join(', '));
     logger === null || logger === void 0 ? void 0 : logger.log("Didn't find allowed secrets: " +
         disjunctiveIntersectSecrets(allowedSecrets, secrets)
@@ -23001,6 +22998,9 @@ const checkSecrets = (docs, allowedSecrets, logger) => {
         throw new Error(`Invalid secrets: ${invalidSecrets
             .map(s => s.namespace + '/' + s.name)
             .join(', ')}`);
+    }
+    if (secrets.length > allowedSecrets.length) {
+        throw new Error(`Found ${secrets.length} secrets (${secrets.map(s => s.namespace + '/' + s.name)}) but only ${allowedSecrets.length} are allowed`);
     }
 };
 exports.checkSecrets = checkSecrets;
@@ -23199,7 +23199,7 @@ const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(voi
         child_process_1.execFile(binPath || 'kustomize', args, { maxBuffer: 1024 * 1024 * 1024 * 10 }, // If the YAML is bigger than this then we should probably write to disk
         (err, stdOut, stdErr) => {
             if (stdErr && stdErr.length) {
-                logger.error(stdErr);
+                logger.warn(stdErr);
             }
             if (err) {
                 logger.error(err);
@@ -23241,9 +23241,6 @@ ${extraResources.map(p => '- ' + path_1.default.basename(p)).join('\n')}
 exports.default = (path, extraResources = [], logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     const { dir: tmpPath, cleanUp } = yield prepDirectory(path, extraResources);
     const { stdOut } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
-    // if (stdErr != '') {
-    //   throw new Error(stdErr);
-    // }
     cleanUp();
     return yaml_1.default.parseAllDocuments(stdOut, { prettyErrors: true });
 });
