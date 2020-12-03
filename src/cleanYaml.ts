@@ -1,5 +1,6 @@
 import YAML from 'yaml';
 import {Logger} from './logger';
+import {getLabel} from './utils';
 
 const simplifyRam = (input: string): string => {
   const units = 'kmgtp';
@@ -82,8 +83,9 @@ const descendInToProps = (
     }
   }
   const children = elem.items || (elem.value && elem.value.items);
+  const parent = elem.value || elem;
   if (children) {
-    children.map((e: any) => descendInToProps(func, e, curPath, elem.value));
+    children.map((e: any) => descendInToProps(func, e, curPath, parent));
   }
 };
 
@@ -96,12 +98,7 @@ export const removeKustomizeValues = (
       d.get('apiVersion') === 'kustomize.config.k8s.io/v1' &&
       d.get('kind') === 'Values';
     if (toRemove) {
-      logger?.log(
-        `Removing ${d.getIn(['metadata', 'namespace'])}/${d.getIn([
-          'metadata',
-          'name'
-        ])}`
-      );
+      logger?.log(`Removing ${getLabel(d)}`);
     }
     return !toRemove;
   });
@@ -150,6 +147,7 @@ export const cleanUpYaml = (
   logger?: Logger
 ): {doc: YAML.Document; modified: boolean} => {
   let modified = false;
+  logger?.log('Processing ' + getLabel(doc));
   descendInToProps(
     cleanElem(s => {
       modified = true;

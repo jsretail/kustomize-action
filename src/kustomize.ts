@@ -14,16 +14,21 @@ const runKustomize = async (
   new Promise<{stdOut: string; stdErr: string}>((res, rej) => {
     const args = ['build', rootPath, ...kustomizeArgs.split(/\ +/g)];
     logger.log('Running: ' + [binPath || 'kustomize', ...args].join(' '));
-    execFile(binPath || 'kustomize', args, (err, stdOut, stdErr) => {
-      if (stdErr && stdErr.length) {
-        logger.error(stdErr);
+    execFile(
+      binPath || 'kustomize',
+      args,
+      {maxBuffer: 1024 * 1024 * 1024 * 10}, // If the YAML is bigger than this then we should probably write to disk
+      (err, stdOut, stdErr) => {
+        if (stdErr && stdErr.length) {
+          logger.error(stdErr);
+        }
+        if (err) {
+          logger.error(err);
+          return rej({err, stdOut, stdErr});
+        }
+        res({stdOut, stdErr});
       }
-      if (err) {
-        logger.error(err);
-        return rej({err, stdOut, stdErr});
-      }
-      res({stdOut, stdErr});
-    });
+    );
   });
 
 const prepDirectory = async (

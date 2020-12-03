@@ -61,7 +61,7 @@ spec:
   resourceID: /subscriptions/4e8f72a4-b6ba-4028-8635-7f6089f4e48a/resourceGroups/rg-test/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-identity
   type: 0`;
 
-describe('validation', () => {
+
   let tmpDir: string, kPath: string | undefined;
   const cleanup: (() => void)[] = [];
   let logger:Logger, loggerErrors:(string|Error)[];
@@ -120,7 +120,6 @@ describe('validation', () => {
     expect(errors).toHaveLength(3);
     expect(loggerErrors).toHaveLength(4);
   });
-});
 
 const downloadKubevalBin = (dir: string) => {
   const url =
