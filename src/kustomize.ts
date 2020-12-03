@@ -89,15 +89,10 @@ export default async (
   binPath?: string
 ): Promise<YAML.Document.Parsed[]> => {
   const {dir: tmpPath, cleanUp} = await prepDirectory(path, extraResources);
-  const {stdOut, stdErr} = await runKustomize(
-    tmpPath,
-    logger,
-    kustomizeArgs,
-    binPath
-  );
-  if (stdErr != '') {
-    throw new Error(stdErr);
-  }
+  const {stdOut} = await runKustomize(tmpPath, logger, kustomizeArgs, binPath);
+  // if (stdErr != '') {
+  //   throw new Error(stdErr);
+  // }
   cleanUp();
   return YAML.parseAllDocuments(stdOut, {prettyErrors: true});
 };
