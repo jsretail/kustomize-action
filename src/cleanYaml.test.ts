@@ -114,82 +114,77 @@ metadata:
 spec:
   foo: bar`;
 
-describe('cleanYaml', () => {
-  test('cleans up YAML', () => {
-    const input = YAML.parseDocument(dirtyYaml);
-    const result = cleanUpYaml(input);
-    expect(result.doc.toString()).toEqual(
-      YAML.parseDocument(cleanYaml).toString()
-    );
-    expect(result.modified).toBeTruthy();
-  });
-  test('removeKustomizeValues removes "kind: Values" documents', () => {
-    const input = [
-      YAML.parseDocument(cleanYaml),
-      YAML.parseDocument(valuesYaml)
-    ];
-    const result = removeKustomizeValues(input, buildTestLogger());
-    expect(result).toHaveLength(1);
-    expect(result[0].toString()).toEqual(
-      YAML.parseDocument(cleanYaml).toString()
-    );
-  });
+test('cleans up YAML', () => {
+  const input = YAML.parseDocument(dirtyYaml);
+  const result = cleanUpYaml(input);
+  expect(result.doc.toString()).toEqual(
+    YAML.parseDocument(cleanYaml).toString()
+  );
+  expect(result.modified).toBeTruthy();
+});
+test('removeKustomizeValues removes "kind: Values" documents', () => {
+  const input = [YAML.parseDocument(cleanYaml), YAML.parseDocument(valuesYaml)];
+  const result = removeKustomizeValues(input, buildTestLogger());
+  expect(result).toHaveLength(1);
+  expect(result[0].toString()).toEqual(
+    YAML.parseDocument(cleanYaml).toString()
+  );
+});
 
-  test('checkYamlForSecrets', () => {
-    const logs: string[] = [];
-    const logger = buildTestLogger(logs);
-    const logMsg = "Didn't find allowed secrets: default/foo";
-    expect(() =>
-      checkSecrets(
-        [YAML.parseDocument(cleanYaml)],
-        parseAllowedSecrets('default/foo'),
-        logger
-      )
-    ).not.toThrow();
-    expect(logs).toContain(logMsg);
-    expect(() =>
-      checkSecrets(
-        [createSecret('default', 'foo')],
-        parseAllowedSecrets('default/foo'),
-        logger
-      )
-    ).not.toThrow();
-    expect(logs.indexOf(logMsg)).toEqual(logs.lastIndexOf(logMsg));
-    expect(() =>
-      checkSecrets([createSecret('default', 'foo')], [], logger)
-    ).toThrow();
-    expect(() =>
-      checkSecrets(
-        [createSecret('default', 'foo'), createSecret('default2', 'foo')],
-        parseAllowedSecrets('default/foo'),
-        logger
-      )
-    ).toThrow();
-    expect(() =>
-      checkSecrets(
-        [createSecret('default', 'foo'), createSecret('default', 'bar')],
-        parseAllowedSecrets('default/foo'),
-        logger
-      )
-    ).toThrow();
-  });
+test('checkYamlForSecrets', () => {
+  const logs: string[] = [];
+  const logger = buildTestLogger(logs);
+  const logMsg = "Didn't find allowed secrets: default/foo";
+  expect(() =>
+    checkSecrets(
+      [YAML.parseDocument(cleanYaml)],
+      parseAllowedSecrets('default/foo'),
+      logger
+    )
+  ).not.toThrow();
+  expect(logs).toContain(logMsg);
+  expect(() =>
+    checkSecrets(
+      [createSecret('default', 'foo')],
+      parseAllowedSecrets('default/foo'),
+      logger
+    )
+  ).not.toThrow();
+  expect(logs.indexOf(logMsg)).toEqual(logs.lastIndexOf(logMsg));
+  expect(() =>
+    checkSecrets([createSecret('default', 'foo')], [], logger)
+  ).toThrow();
+  expect(() =>
+    checkSecrets(
+      [createSecret('default', 'foo'), createSecret('default2', 'foo')],
+      parseAllowedSecrets('default/foo'),
+      logger
+    )
+  ).toThrow();
+  expect(() =>
+    checkSecrets(
+      [createSecret('default', 'foo'), createSecret('default', 'bar')],
+      parseAllowedSecrets('default/foo'),
+      logger
+    )
+  ).toThrow();
+});
 
-  const rules = parseCustomValidation(
-    `Contains oof or foo|true|/oof|foo/
+const rules = parseCustomValidation(
+  `Contains oof or foo|true|/oof|foo/
 Contains \\n bar or bar pipe|true|/\\nbar\\|?/
 Doesnt contain baz|false|/baz/`
-  );
-  const logger = buildTestLogger();
-  test('Custom validation passes', () => {
-    expect(customValidation('foo\nbar', rules, logger)).toHaveLength(0);
-    expect(customValidation('oof\nbar\\|', rules, logger)).toHaveLength(0);
-  });
-  test('Custom validation fails', () => {
-    expect(customValidation('fo\nba', rules, logger)).toHaveLength(2);
-    expect(customValidation('\nbar|', rules, logger)).toHaveLength(1);
-    expect(customValidation('baz', rules, logger)).toHaveLength(3);
-    expect(customValidation('foo\nbarbaz', rules, logger)).toEqual([
-      'Doesnt contain baz'
-    ]);
-  });
+);
+const logger = buildTestLogger();
+test('Custom validation passes', () => {
+  expect(customValidation('foo\nbar', rules, logger)).toHaveLength(0);
+  expect(customValidation('oof\nbar\\|', rules, logger)).toHaveLength(0);
+});
+test('Custom validation fails', () => {
+  expect(customValidation('fo\nba', rules, logger)).toHaveLength(2);
+  expect(customValidation('\nbar|', rules, logger)).toHaveLength(1);
+  expect(customValidation('baz', rules, logger)).toHaveLength(3);
+  expect(customValidation('foo\nbarbaz', rules, logger)).toEqual([
+    'Doesnt contain baz'
+  ]);
 });

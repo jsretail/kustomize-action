@@ -16,7 +16,7 @@ import {
   validateSettings
 } from './setup';
 import {runActions} from './outputs';
-import {makeBox} from './utils';
+import {getLabel, makeBox} from './utils';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
@@ -101,8 +101,28 @@ const getYaml = async (settings: Settings, logger: Logger) => {
   }
   output(logger, settings.verbose, 'Checking for unencrypted secrets');
   checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
-  const yaml = cleanedDocs.join(''); // The docs retain their --- when parsed
-  let errors = [] as (string | undefined)[];
+  const yaml = cleanedDocs
+    .map(d => {
+      if (d.errors.length) {
+        console.warn(
+          `Document ${getLabel(d)} has errors:\n${YAML.stringify(d.errors)}`
+        );
+        return `# Document ${getLabel(d)} has errors:\n${YAML.stringify(
+          d.errors
+        )}`;
+      }
+      return d.toString();
+    })
+    .join(''); // The docs retain their --- when parsed
+  let errors = cleanedDocs
+    .filter(d => d.errors.length)
+    .reduce((a, d) => {
+      const label = getLabel(d);
+      d.errors.forEach(e => {
+        a.push(`${label} ${e.linePos} ${e.range}: ${e.message}`);
+      });
+      return a;
+    }, [] as (string | undefined)[]);
   if (settings.validateWithKubeVal) {
     output(logger, settings.verbose, 'Validating YAML');
     errors = await validateYaml(yaml, logger);

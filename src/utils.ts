@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path, {ParsedPath} from 'path';
+import YAML from 'yaml';
 
 export const resolveEnvVars = (str: string | undefined) =>
   str
@@ -105,3 +106,8 @@ export const makeBox = (
     bottom
   ].join('\n');
 };
+
+export const getLabel = (doc: YAML.Document) =>
+  `${doc.getIn(['metadata', 'namespace']) || 'missing namespace'}/${
+    doc.getIn(['metadata', 'name']) || 'missing name'
+  } (${doc.get('kind') || 'missing kind'})`;
