@@ -26616,7 +26616,6 @@ const cleanElem = (log) => (elem, path) => {
     }
     if (elem.value.type === 'PLAIN') {
         if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
-            console.log(elem.value.value);
             if (typeof elem.value.value === 'number') {
                 elem.value.value = elem.value.value.toString();
             }
