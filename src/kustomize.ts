@@ -97,5 +97,5 @@ export default async (
   const {stdOut} = await runKustomize(tmpPath, logger, kustomizeArgs, binPath);
 
   cleanUp();
-  return YAML.parseAllDocuments(stdOut, {prettyErrors: true });
+  return YAML.parseAllDocuments(stdOut, {prettyErrors: true});
 };

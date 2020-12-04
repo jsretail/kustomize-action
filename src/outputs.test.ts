@@ -283,7 +283,12 @@ describe('parseActions', () => {
   artifactAction.errorsFileName = 'errors';
   artifactAction.name = 'my-artifact';
 
-  const actions: OutputAction[] = [loggerAction, variableAction, fileAction, artifactAction];
+  const actions: OutputAction[] = [
+    loggerAction,
+    variableAction,
+    fileAction,
+    artifactAction
+  ];
   const json =
     '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"output","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","yamlFileName":"/tmp/output","errorsFileName":"/tmp/errors"},{"type":"ArtifactOutputAction","name":"my-artifact","yamlFileName":"output","errorsFileName":"errors"}]';
   test('parses actions', () => {

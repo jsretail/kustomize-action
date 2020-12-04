@@ -94,13 +94,17 @@ export class FileOutputAction implements OutputAction {
 
     const l = settings.verbose ? logger : undefined;
 
-    const promises  = [Promise.resolve()];
+    const promises = [Promise.resolve()];
     if (this.yamlFileName) {
-      promises.push( this.output(getPath(this.yamlFileName), yaml, l));
+      promises.push(
+        this.output(getPath(resolveEnvVars(this.yamlFileName)), yaml, l)
+      );
     }
     if (this.errorsFileName) {
       const content = JSON.stringify(errors, null, 2);
-      promises.push( this.output(getPath(this.errorsFileName), content, l));
+      promises.push(
+        this.output(getPath(resolveEnvVars(this.errorsFileName)), content, l)
+      );
     }
     return Promise.all(promises).then(() => Promise.resolve());
   }

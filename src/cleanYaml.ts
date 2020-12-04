@@ -42,7 +42,7 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
   }
   if (elem.value.type === 'PLAIN') {
     if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
-      console.log(elem.value.value)
+      console.log(elem.value.value);
       if (typeof elem.value.value === 'number') {
         elem.value.value = elem.value.value.toString();
       } else {
@@ -117,7 +117,7 @@ export const checkSecrets = (
     .filter(d => d.get('kind') === 'Secret')
     .map(s => s.get('metadata'))
     .map(m => ({name: m.get('name'), namespace: m.get('namespace')}));
-  
+
   logger?.log(
     'Found secrets: ' + secrets.map(s => s.namespace + '/' + s.name).join(', ')
   );
@@ -138,7 +138,9 @@ export const checkSecrets = (
   }
   if (secrets.length > allowedSecrets.length) {
     throw new Error(
-      `Found ${secrets.length} secrets (${secrets.map(s => s.namespace + '/' + s.name)}) but only ${allowedSecrets.length} are allowed`
+      `Found ${secrets.length} secrets (${secrets.map(
+        s => s.namespace + '/' + s.name
+      )}) but only ${allowedSecrets.length} are allowed`
     );
   }
 };
