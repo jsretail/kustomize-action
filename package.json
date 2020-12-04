@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/JSainsburyPLC/retail-k8s-action#readme",
   "dependencies": {
+    "@actions/artifact": "^0.4.1",
     "@actions/core": "^1.2.6",
     "@actions/github": "^4.0.0",
     "dotenv": "^8.2.0",

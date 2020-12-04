@@ -40,9 +40,9 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
     log(`${path}\t\t: Removed`);
     return true;
   }
-
   if (elem.value.type === 'PLAIN') {
-    if (path.endsWith('/limits/cpu') || path.endsWith('/requests/cpu')) {
+    if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
+      console.log(elem.value.value)
       if (typeof elem.value.value === 'number') {
         elem.value.value = elem.value.value.toString();
       } else {
@@ -53,7 +53,7 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
         }
       }
     }
-    if (path.endsWith('/limits/memory') || path.endsWith('/requests/memory')) {
+    if (/\/(limits|requests|hard|soft)\/memory$/.test(path)) {
       const newVal = simplifyRam(elem.value.value);
       if (elem.value.value !== newVal) {
         log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);

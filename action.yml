@@ -9,9 +9,9 @@ inputs:
     required: true
     default: './'
   output-actions:
-    description: 'Array of actions to take with the generated YAML. Currently the options are:\n{"type":"LoggerOutputAction","logErrors":true,"logYaml":true}\n{"type":"VariableOutputAction","outputVariableName":"thisIsAVariableInGitWorkflow","errorsVariableName":undefined}\n{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"$GITHUB_WORKSPACE/output.yml"}'
+    description: 'Array of actions to take with the generated YAML. Currently the options are:\n{"type":"LoggerOutputAction","logErrors":true,"logYaml":true}\n{"type":"VariableOutputAction","outputVariableName":"thisIsAVariableInGitWorkflow","errorsVariableName":undefined}\n{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","errorsFileName":"$GITHUB_WORKSPACE/errors.yml","yamlFileName":"$GITHUB_WORKSPACE/output.yml"}\n{"type":"ArtifactOutputAction","name":"my-artifact","errorsFileName":"errors.yml","yamlFileName":"output.yml"}'
     required: true
-    default: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]'
+    default: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"errorsFileName":"$GITHUB_WORKSPACE/errors.yml","yamlFileName":"$GITHUB_WORKSPACE/output.yml"},{"type":"ArtifactOutputAction","name":"my-artifact","errorsFileName":"errors.yml","yamlFileName":"output.yml"}]'
   extra-resources:
     description: "Comma separated list of additional .yaml files to reference when running kustomize. E.g. if you have dev and test on the same cluster then you would want to include dev's YAML when building test or vice versa."
     required: false

@@ -17,6 +17,7 @@ import {
 } from './setup';
 import {runActions} from './outputs';
 import {getLabel, makeBox} from './utils';
+import {Type} from 'yaml/util';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
@@ -111,7 +112,8 @@ const getYaml = async (settings: Settings, logger: Logger) => {
           d.errors
         )}`;
       }
-      return d.toString();
+
+      return YAML.stringify(d);
     })
     .join(''); // The docs retain their --- when parsed
   let errors = cleanedDocs

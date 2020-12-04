@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import * as artifact from '@actions/artifact';
 import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
@@ -10,10 +11,12 @@ import {
   runActions,
   VariableOutputAction,
   FileOutputAction,
-  parseActions
+  parseActions,
+  ArtifactOutputAction
 } from './outputs';
 import {defaultKustomizeArgs, Settings} from './setup';
 import {mockedCwd} from './utils';
+import {stringify} from 'querystring';
 
 describe('output actions', () => {
   const testSettings: Settings = {
@@ -79,24 +82,59 @@ foo:
     });
   });
 
-  describe('FileOutputAction', () => {
-    test('writes to file', async () => {
-      const action = new FileOutputAction();
-      action.createDirIfMissing = true;
-      action.fileOpenFlags = 'w';
-      const tmpFile = tmp.tmpNameSync({
-        template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
-      });
-      expect(fs.existsSync(tmpFile)).toBeFalsy();
-      expect(fs.existsSync(path.join(tmpFile, '..', '..'))).toBeFalsy();
-      action.fileName = tmpFile;
+  describe('ArtifactOutputAction', () => {
+    const uploaded = [] as {
+      name: string;
+      files: string[];
+      rootDirectory: string;
+    }[];
+    mockArtifactClient(uploaded);
+
+    test('uploads artifact', async () => {
+      const action = new ArtifactOutputAction();
+
+      action.name = 'foo';
+      action.yamlFileName = 'bar';
+      action.errorsFileName = 'baz';
       await action.invoke(
         testYaml,
         testErrors,
         testSettings,
         buildTestLogger()
       );
-      expect(fs.readFileSync(tmpFile).toString()).toEqual(testYaml);
+      expect(uploaded).toHaveLength(1);
+      expect(uploaded[0].name).toEqual(action.name);
+      const files = uploaded[0].files.map(p => path.basename(p));
+      expect(files).not.toEqual(uploaded[0].files);
+      expect(files).toContain(action.errorsFileName);
+      expect(files).toContain(action.yamlFileName);
+    });
+  });
+
+  describe('FileOutputAction', () => {
+    test('writes to file', async () => {
+      const action = new FileOutputAction();
+      action.createDirIfMissing = true;
+      action.fileOpenFlags = 'w';
+      const tmpFileYaml = tmp.tmpNameSync({
+        template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
+      });
+      const tmpFileErrors = tmp.tmpNameSync({
+        template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
+      });
+
+      action.yamlFileName = tmpFileYaml;
+      action.errorsFileName = tmpFileErrors;
+      await action.invoke(
+        testYaml,
+        testErrors,
+        testSettings,
+        buildTestLogger()
+      );
+      expect(fs.readFileSync(tmpFileYaml).toString()).toEqual(testYaml);
+      expect(JSON.parse(fs.readFileSync(tmpFileErrors).toString())).toEqual(
+        testErrors
+      );
     });
 
     test('writes to relative path', async () => {
@@ -113,7 +151,7 @@ foo:
           recursive: true
         });
         fs.mkdirSync(path.dirname(tmpPath), {recursive: true});
-        action.fileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
+        action.yamlFileName = '.' + tmpPath.substr(tmpPath.indexOf('/foo-'));
         mockedCwd(path.dirname(tmpPath));
         try {
           if (process.env['GITHUB_WORKSPACE']) {
@@ -134,19 +172,6 @@ foo:
       }
     });
 
-    test("doesn't write file if error occurred", async () => {
-      const action = new FileOutputAction();
-      const tmpFile = tmp.tmpNameSync({
-        template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
-      });
-      action.fileName = tmpFile;
-      await action.invoke(testYaml, ['bang'], testSettings, buildTestLogger());
-      expect(fs.existsSync(tmpFile)).toBeFalsy();
-      action.dontOutputIfErrored = false;
-      await action.invoke(testYaml, ['bang'], testSettings, buildTestLogger());
-      expect(fs.existsSync(tmpFile)).toBeTruthy();
-    });
-
     test('appends to file', async () => {
       const action = new FileOutputAction();
       action.createDirIfMissing = true;
@@ -155,7 +180,7 @@ foo:
         template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
       });
       expect(fs.existsSync(path.join(tmpFile, '..', '..'))).toBeFalsy();
-      action.fileName = tmpFile;
+      action.yamlFileName = tmpFile;
       await action.invoke(
         testYaml,
         testErrors,
@@ -177,7 +202,7 @@ foo:
         template: '/tmp/test-XXXXXXXXXX/foo/bar/baz'
       });
       expect(fs.existsSync(path.join(tmpFile, '..', '..'))).toBeFalsy();
-      action.fileName = tmpFile;
+      action.yamlFileName = tmpFile;
       const err = await new Promise<any>(res => {
         action
           .invoke(testYaml, testErrors, testSettings, buildTestLogger())
@@ -251,11 +276,16 @@ describe('parseActions', () => {
   loggerAction.logErrors = true;
   loggerAction.logYaml = false;
   const fileAction = new FileOutputAction();
-  fileAction.fileName = '/tmp/output';
+  fileAction.yamlFileName = '/tmp/output';
+  fileAction.errorsFileName = '/tmp/errors';
+  const artifactAction = new ArtifactOutputAction();
+  artifactAction.yamlFileName = 'output';
+  artifactAction.errorsFileName = 'errors';
+  artifactAction.name = 'my-artifact';
 
-  const actions: OutputAction[] = [loggerAction, variableAction, fileAction];
+  const actions: OutputAction[] = [loggerAction, variableAction, fileAction, artifactAction];
   const json =
-    '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"output","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/output"}]';
+    '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"output","errorsVariableName":"errors"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","yamlFileName":"/tmp/output","errorsFileName":"/tmp/errors"},{"type":"ArtifactOutputAction","name":"my-artifact","yamlFileName":"output","errorsFileName":"errors"}]';
   test('parses actions', () => {
     const result = parseActions(json);
     expect(result).toEqual(actions);
@@ -268,7 +298,7 @@ describe('parseActions', () => {
   });
 });
 
-const mockGitHub = () => {
+function mockGitHub() {
   jest.spyOn(github.context, 'repo', 'get').mockImplementation(() => {
     return {
       owner: 'some-owner',
@@ -282,4 +312,32 @@ const mockGitHub = () => {
     outputVars[name] = val;
   });
   return {outputVars};
-};
+}
+
+function mockArtifactClient(
+  uploaded: {
+    name: string;
+    files: string[];
+    rootDirectory: string;
+  }[]
+) {
+  jest.spyOn(artifact, 'create').mockImplementation(() => ({
+    uploadArtifact: (name, files, rootDirectory, options) => {
+      uploaded.push({name, files, rootDirectory});
+      return new Promise<artifact.UploadResponse>(res =>
+        res({
+          artifactName: name,
+          artifactItems: files,
+          size: 0,
+          failedItems: []
+        })
+      );
+    },
+    downloadAllArtifacts: (path?: string) => Promise.reject('not implemented'),
+    downloadArtifact: (
+      name: string,
+      path?: string,
+      options?: artifact.DownloadOptions
+    ) => Promise.reject('not implemented')
+  }));
+}
