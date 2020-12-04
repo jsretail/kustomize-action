@@ -115,7 +115,7 @@ const getYaml = async (settings: Settings, logger: Logger) => {
 
       return YAML.stringify(d);
     })
-    .join(''); // The docs retain their --- when parsed
+    .join('---\n');
   let errors = cleanedDocs
     .filter(d => d.errors.length)
     .reduce((a, d) => {
