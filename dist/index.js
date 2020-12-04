@@ -26827,7 +26827,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         }
         return yaml_1.default.stringify(d);
     })
-        .join(''); // The docs retain their --- when parsed
+        .join('---\n');
     let errors = cleanedDocs
         .filter(d => d.errors.length)
         .reduce((a, d) => {
