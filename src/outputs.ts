@@ -180,5 +180,6 @@ export class ArtifactOutputAction implements OutputAction {
     await fileAction.invoke(yaml, errors, settings, logger);
     const client = artifact.create();
     await client.uploadArtifact(this.name, files, tmpDir);
+    cleanup();
   }
 }
