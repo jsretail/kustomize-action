@@ -4,6 +4,8 @@ import fs from 'fs';
 import {Logger} from '../logger';
 import server from './server';
 
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
+
 const runKubeVal = (
   path: string,
   port: number,
@@ -40,7 +42,7 @@ const main = async (
 ): Promise<(string | undefined)[]> => {
   const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
   const stop = await server.start(port);
-  const {name: tmpYaml} = tmp.fileSync();
+  const {name: tmpYaml} = tmp.fileSync({tmpdir:osTmpDir});
   await fs.promises.writeFile(tmpYaml, yaml);
   let retVal;
   try {

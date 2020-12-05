@@ -108,6 +108,8 @@ export const makeBox = (
 };
 
 export const getLabel = (doc: YAML.Document) =>
-  `${doc.getIn(['metadata', 'namespace']) || 'missing namespace'}/${
-    doc.getIn(['metadata', 'name']) || 'missing name'
-  } (${doc.get('kind') || 'missing kind'})`;
+  (doc.get('kind') === 'Namespace'
+    ? doc.getIn(['metadata', 'name'])
+    : `${doc.getIn(['metadata', 'namespace']) || ''}/${
+        doc.getIn(['metadata', 'name']) || 'missing name'
+      }`) + ` (${doc.get('kind') || 'missing kind'})`;

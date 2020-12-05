@@ -149,9 +149,11 @@ export const cleanUpYaml = (
   logger?: Logger
 ): {doc: YAML.Document; modified: boolean} => {
   let modified = false;
-  logger?.log('Processing ' + getLabel(doc));
   descendInToProps(
     cleanElem(s => {
+      if (!modified) {
+        logger?.log('Processing ' + getLabel(doc));
+      }
       modified = true;
       logger?.log(s);
     }),

@@ -7,6 +7,7 @@ import {Logger} from './logger';
 import {Settings} from './setup';
 import {getWorkspaceRoot, resolveEnvVars} from './utils';
 
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
 export interface OutputAction {
   type: string;
   invoke: (
@@ -161,8 +162,9 @@ export class ArtifactOutputAction implements OutputAction {
     logger: Logger
   ) {
     const {tmpDir, cleanup} = await new Promise((res, rej) =>
-      tmp.dir({keep: true, unsafeCleanup: true}, (err, tmpDir, cleanup) =>
-        err ? rej(err) : res({tmpDir, cleanup})
+      tmp.dir(
+        {tmpdir: osTmpDir, keep: true, unsafeCleanup: true},
+        (err, tmpDir, cleanup) => (err ? rej(err) : res({tmpDir, cleanup}))
       )
     );
     const fileAction = new FileOutputAction();

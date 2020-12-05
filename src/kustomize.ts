@@ -5,6 +5,8 @@ import tmp from 'tmp';
 import YAML from 'yaml';
 import {Logger} from './logger';
 
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
+
 const runKustomize = async (
   rootPath: string,
   logger: Logger,
@@ -38,7 +40,7 @@ const prepDirectory = async (
   await validatePaths(rootPath, extraResources);
   const {dir, cleanUp} = await new Promise<{dir: string; cleanUp: () => void}>(
     (res, rej) =>
-      tmp.dir({unsafeCleanup: true}, (err, dir, cleanUp) =>
+      tmp.dir({tmpdir: osTmpDir, unsafeCleanup: true}, (err, dir, cleanUp) =>
         err ? rej(err) : res({dir, cleanUp})
       )
   );
