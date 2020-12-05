@@ -26689,8 +26689,10 @@ const checkSecrets = (docs, allowedSecrets, logger) => {
 exports.checkSecrets = checkSecrets;
 const cleanUpYaml = (doc, logger) => {
     let modified = false;
-    logger === null || logger === void 0 ? void 0 : logger.log('Processing ' + utils_1.getLabel(doc));
     descendInToProps(cleanElem(s => {
+        if (!modified) {
+            logger === null || logger === void 0 ? void 0 : logger.log('Processing ' + utils_1.getLabel(doc));
+        }
         modified = true;
         logger === null || logger === void 0 ? void 0 : logger.log(s);
     }), doc.contents, '', doc);
@@ -26875,6 +26877,7 @@ const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const tmp_1 = __importDefault(__webpack_require__(8517));
 const yaml_1 = __importDefault(__webpack_require__(3552));
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
 const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((res, rej) => {
         const args = ['build', rootPath, ...kustomizeArgs.split(/\ +/g)];
@@ -26894,7 +26897,7 @@ const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(voi
 });
 const prepDirectory = (rootPath, extraResources = []) => __awaiter(void 0, void 0, void 0, function* () {
     yield validatePaths(rootPath, extraResources);
-    const { dir, cleanUp } = yield new Promise((res, rej) => tmp_1.default.dir({ unsafeCleanup: true }, (err, dir, cleanUp) => err ? rej(err) : res({ dir, cleanUp })));
+    const { dir, cleanUp } = yield new Promise((res, rej) => tmp_1.default.dir({ tmpdir: osTmpDir, unsafeCleanup: true }, (err, dir, cleanUp) => err ? rej(err) : res({ dir, cleanUp })));
     yield Promise.all([
         ...referenceFiles(dir, rootPath, extraResources),
         createKustomization(dir, extraResources)
@@ -27024,6 +27027,7 @@ const path_1 = __importDefault(__webpack_require__(5622));
 const tmp_1 = __importDefault(__webpack_require__(8517));
 const fs_1 = __webpack_require__(5747);
 const utils_1 = __webpack_require__(1314);
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
 class LoggerOutputAction {
     constructor() {
         this.type = 'LoggerOutputAction';
@@ -27146,7 +27150,7 @@ class ArtifactOutputAction {
     }
     invoke(yaml, errors, settings, logger) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { tmpDir, cleanup } = yield new Promise((res, rej) => tmp_1.default.dir({ keep: true, unsafeCleanup: true }, (err, tmpDir, cleanup) => err ? rej(err) : res({ tmpDir, cleanup })));
+            const { tmpDir, cleanup } = yield new Promise((res, rej) => tmp_1.default.dir({ tmpdir: osTmpDir, keep: true, unsafeCleanup: true }, (err, tmpDir, cleanup) => (err ? rej(err) : res({ tmpDir, cleanup }))));
             const fileAction = new FileOutputAction();
             const files = [];
             if (this.yamlFileName) {
@@ -27160,6 +27164,7 @@ class ArtifactOutputAction {
             yield fileAction.invoke(yaml, errors, settings, logger);
             const client = artifact.create();
             yield client.uploadArtifact(this.name, files, tmpDir);
+            cleanup();
         });
     }
 }
@@ -27438,7 +27443,9 @@ const makeBox = (title, minLen = 40, maxLen = 80, xPadding = 3, yPadding = 1) =>
     ].join('\n');
 };
 exports.makeBox = makeBox;
-const getLabel = (doc) => `${doc.getIn(['metadata', 'namespace']) || 'missing namespace'}/${doc.getIn(['metadata', 'name']) || 'missing name'} (${doc.get('kind') || 'missing kind'})`;
+const getLabel = (doc) => (doc.get('kind') === 'Namespace'
+    ? doc.getIn(['metadata', 'name'])
+    : `${doc.getIn(['metadata', 'namespace']) || ''}/${doc.getIn(['metadata', 'name']) || 'missing name'}`) + ` (${doc.get('kind') || 'missing kind'})`;
 exports.getLabel = getLabel;
 
 
@@ -27466,6 +27473,7 @@ const tmp_1 = __importDefault(__webpack_require__(8517));
 const child_process_1 = __webpack_require__(3129);
 const fs_1 = __importDefault(__webpack_require__(5747));
 const server_1 = __importDefault(__webpack_require__(2925));
+const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
 const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) => {
     child_process_1.execFile(kubeValBin || 'kubeval', ['--strict', '--schema-location', 'http://localhost:' + port, path], (err, stdOut, stdErr) => {
         logger.log(stdOut);
@@ -27485,7 +27493,7 @@ const getErrors = (text) => text
 const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
     const stop = yield server_1.default.start(port);
-    const { name: tmpYaml } = tmp_1.default.fileSync();
+    const { name: tmpYaml } = tmp_1.default.fileSync({ tmpdir: osTmpDir });
     yield fs_1.default.promises.writeFile(tmpYaml, yaml);
     let retVal;
     try {
