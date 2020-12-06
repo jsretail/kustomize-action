@@ -18,6 +18,7 @@ import {
 import {runActions} from './outputs';
 import {getLabel, makeBox} from './utils';
 import {Type} from 'yaml/util';
+import {resolve} from 'path';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
@@ -72,36 +73,59 @@ const output = (logger: Logger, verbose: boolean, msg: string) => {
 };
 
 const getYaml = async (settings: Settings, logger: Logger) => {
-  output(logger, settings.verbose, 'Running kustomize');
-  const resources = await kustomize(
-    settings.kustomizePath,
-    settings.extraResources,
-    logger,
-    settings.kustomizeArgs
-  );
-  output(logger, settings.verbose, 'Removing superfluous kustomize resources');
-  const docs = removeKustomizeValues(
-    resources,
-    settings.verbose ? logger : undefined
-  );
-  output(logger, settings.verbose, 'Cleaning up YAML');
-  const {cleanedDocs, modified} = docs.reduce(
-    (a, d) => {
-      const {doc, modified} = cleanUpYaml(
-        d,
+  const section = (name: string, fn: () => Promise<unknown>) => {
+    if (!settings.verbose) {
+      output(logger, false, name);
+      return fn;
+    }
+    return core.group(name, async () => {
+      output(logger, true, name);
+      return await fn();
+    });
+  };
+
+  const resources = ((await section('Running kustomize', async () => {
+    return await kustomize(
+      settings.kustomizePath,
+      settings.extraResources,
+      logger,
+      settings.kustomizeArgs
+    );
+  })) as unknown) as YAML.Document[];
+
+  const docs = ((await section(
+    'Removing superfluous kustomize resources',
+    async () => {
+      return removeKustomizeValues(
+        resources,
         settings.verbose ? logger : undefined
       );
-      a.cleanedDocs.push(doc);
-      a.modified = a.modified || modified;
-      return a;
-    },
-    {cleanedDocs: <YAML.Document[]>[], modified: false}
-  );
-  if (!modified && settings.verbose) {
-    logger.log('No changes required');
-  }
-  output(logger, settings.verbose, 'Checking for unencrypted secrets');
-  checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
+    }
+  )) as unknown) as YAML.Document[];
+
+  const cleanedDocs = ((await section('Cleaning up YAML', async () => {
+    const cleaned = docs.reduce(
+      (a, d) => {
+        const {doc, modified} = cleanUpYaml(
+          d,
+          settings.verbose ? logger : undefined
+        );
+        a.cleanedDocs.push(doc);
+        a.modified = a.modified || modified;
+        return a;
+      },
+      {cleanedDocs: <YAML.Document[]>[], modified: false}
+    );
+    if (!cleaned.modified && settings.verbose) {
+      logger.log('No changes required');
+    }
+    return cleaned.cleanedDocs;
+  })) as unknown) as YAML.Document[];
+
+  await section('Checking for unencrypted secrets', async () => {
+    checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
+  });
+
   const yaml = cleanedDocs
     .map(d => {
       if (d.errors.length) {
@@ -125,19 +149,22 @@ const getYaml = async (settings: Settings, logger: Logger) => {
       });
       return a;
     }, [] as (string | undefined)[]);
+
   if (settings.validateWithKubeVal) {
-    output(logger, settings.verbose, 'Validating YAML');
-    errors = await validateYaml(yaml, logger);
+    await section('Validating YAML', async () => {
+      errors.push(...(await validateYaml(yaml, logger)));
+    });
   }
   if (settings.customValidation.length) {
-    output(logger, settings.verbose, 'Running customValidation tests');
-    errors = errors.concat(
-      customValidation(
-        yaml,
-        settings.customValidation,
-        settings.verbose ? logger : undefined
-      )
-    );
+    await section('Running customValidation tests', async () => {
+      errors.push(
+        ...customValidation(
+          yaml,
+          settings.customValidation,
+          settings.verbose ? logger : undefined
+        )
+      );
+    });
   }
 
   return {yaml, errors: <string[]>errors.filter(e => e !== undefined)};

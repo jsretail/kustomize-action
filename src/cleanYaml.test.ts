@@ -48,6 +48,8 @@ spec:
           env:
             - name: foo
               value: 'bar'
+            - name: should_be_string
+              value: true
           resources:
             limits:
               cpu: 2000m
@@ -61,7 +63,15 @@ spec:
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst
-      securityContext: {}`;
+      securityContext: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  isTrue: true
+  isFalse: false`;
 
 const cleanYaml = `kind: Deployment
 apiVersion: apps/v1
@@ -92,6 +102,8 @@ spec:
           env:
             - name: foo
               value: 'bar'
+            - name: should_be_string
+              value: "true"
           resources:
             limits:
               cpu: "2"
@@ -105,7 +117,15 @@ spec:
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst
-      securityContext: {}`;
+      securityContext: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  isTrue: "true"
+  isFalse: "false"`;
 
 const valuesYaml = `apiVersion: kustomize.config.k8s.io/v1
 kind: Values
@@ -115,19 +135,21 @@ spec:
   foo: bar`;
 
 test('cleans up YAML', () => {
-  const input = YAML.parseDocument(dirtyYaml);
-  const result = cleanUpYaml(input);
-  expect(result.doc.toString()).toEqual(
-    YAML.parseDocument(cleanYaml).toString()
-  );
-  expect(result.modified).toBeTruthy();
+  const input = YAML.parseAllDocuments(dirtyYaml);
+  const clean = YAML.parseAllDocuments(cleanYaml);
+
+  for (let i = 0; i < input.length; i++) {
+    const result = cleanUpYaml(input[i]);
+    expect(result.doc.toString()).toEqual(clean[i].toString());
+    expect(result.modified).toEqual(i == 0);
+  }
 });
 test('removeKustomizeValues removes "kind: Values" documents', () => {
-  const input = [YAML.parseDocument(cleanYaml), YAML.parseDocument(valuesYaml)];
+  const input = [...YAML.parseAllDocuments(cleanYaml), YAML.parseDocument(valuesYaml)];
   const result = removeKustomizeValues(input, buildTestLogger());
-  expect(result).toHaveLength(1);
-  expect(result[0].toString()).toEqual(
-    YAML.parseDocument(cleanYaml).toString()
+  expect(result).toHaveLength(2);
+  expect(result.toString()).toEqual(
+    YAML.parseAllDocuments(cleanYaml).toString()
   );
 });
 
@@ -185,6 +207,6 @@ test('Custom validation fails', () => {
   expect(customValidation('\nbar|', rules, logger)).toHaveLength(1);
   expect(customValidation('baz', rules, logger)).toHaveLength(3);
   expect(customValidation('foo\nbarbaz', rules, logger)).toEqual([
-    'Doesnt contain baz'
+    'Doesnt contain baz\nbaz'
   ]);
 });
