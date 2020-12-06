@@ -48,7 +48,7 @@ spec:
               protocol: TCP
           env:
             - name: foo
-              value: 'off'
+              value: 'Off'
             - name: should_be_string
               value: true
           resources:
