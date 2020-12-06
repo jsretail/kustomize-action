@@ -26578,8 +26578,9 @@ module.exports = {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.customValidation = exports.cleanUpYaml = exports.checkSecrets = exports.removeKustomizeValues = void 0;
+exports.customValidation = exports.cleanUpYaml = exports.checkSecrets = exports.removeKustomizeValues = exports.hackyBoolString = void 0;
 const utils_1 = __webpack_require__(1314);
+exports.hackyBoolString = "fe6edaed2a: 1f4b9:'b989659b53d86025c";
 const simplifyRam = (input) => {
     var _a, _b, _c;
     const units = 'kmgtp';
@@ -26614,11 +26615,13 @@ const cleanElem = (log) => (elem, path) => {
         log(`Removed: ${path}`);
         return true;
     }
+    if (((typeof elem.value.value === 'string' &&
+        /^\s*(true|false|on|off|yes|no)\s*$/gi.test(elem.value.value)) ||
+        typeof elem.value.value === 'boolean') &&
+        (/\/env\/value$/.test(path) || /^\/data\//.test(path))) {
+        elem.value.value = elem.value.value.toString() + exports.hackyBoolString; // I gave up, sorry
+    }
     if (elem.value.type === 'PLAIN') {
-        if (typeof elem.value.value === 'boolean' &&
-            (/\/env\/value$/.test(path) || /^\/data\//.test(path))) {
-            elem.value.value = elem.value.value.toString();
-        }
         if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
             if (typeof elem.value.value === 'number') {
                 elem.value.value = elem.value.value.toString();
@@ -26836,7 +26839,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         }
         return cleaned.cleanedDocs;
     })));
-    yield section('Checking for unencrypted secrets', () => __awaiter(void 0, void 0, void 0, function* () {
+    yield section('Checking for un-encrypted secrets', () => __awaiter(void 0, void 0, void 0, function* () {
         cleanYaml_1.checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
     }));
     const yaml = cleanedDocs
@@ -26845,7 +26848,8 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
             console.warn(`Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`);
             return `# Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`;
         }
-        return yaml_1.default.stringify(d);
+        const rx = new RegExp(cleanYaml_1.hackyBoolString.replace(/[^0-9a-z]+/g, '.+'), 'g');
+        return yaml_1.default.stringify(d).replace(rx, '');
     })
         .join('---\n');
     let errors = cleanedDocs
