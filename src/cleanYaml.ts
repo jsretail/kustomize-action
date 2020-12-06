@@ -37,17 +37,20 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
         elem.value.items == null ||
         elem.value.items.length === 0))
   ) {
-    log(`${path}\t\t: Removed`);
+    log(`Removed: ${path}`);
     return true;
   }
   if (elem.value.type === 'PLAIN') {
+    if (typeof elem.value.value === 'boolean' && (/\/env\/value$/.test(path) || /^\/data\//.test(path))){
+      elem.value.value = elem.value.value.toString()
+    }
     if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
       if (typeof elem.value.value === 'number') {
         elem.value.value = elem.value.value.toString();
       } else {
         const newVal = elem.value.value.replace(/000m/, '');
         if (elem.value.value !== newVal) {
-          log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+          log(`Modified: ${path} from "${elem.value.value}" to "${newVal}"`);
           elem.value.value = newVal;
         }
       }
@@ -55,7 +58,7 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
     if (/\/(limits|requests|hard|soft)\/memory$/.test(path)) {
       const newVal = simplifyRam(elem.value.value);
       if (elem.value.value !== newVal) {
-        log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+        log(`Modified: ${path} from "${elem.value.value}" to "${newVal}"`);
         elem.value.value = newVal;
       }
     }
@@ -170,18 +173,17 @@ export const customValidation = (
   logger: Logger | undefined
 ): string[] => {
   logger?.log(JSON.stringify(customValidation, null, 2));
-  return customValidation
-    .filter(v => {
-      const m = v.regex.exec(input);
-      const fail = !!m !== v.expected;
-      logger?.log(
-        `${v.regex.source}	:${m ? 'Matched' : 'Not matched'}	${
-          fail ? 'Fail ' : 'Pass'
-        } "${m && m!}"`
-      );
-      return fail;
-    })
-    .map(v => v.message);
+  const messages = customValidation.map(v => {
+    const m = v.regex.exec(input);
+    const fail = !!m !== v.expected;
+    logger?.log(
+      `${v.regex.source}	:${m ? 'Matched' : 'Not matched'}	${
+        fail ? 'Fail ' : 'Pass'
+      } "${m && m!}"`
+    );
+    return !fail ? '' : v.message + (m && '\n' + m.join('\n') || '');
+  });
+  return messages.filter(m => m != '');
 };
 
 type SecretMeta = {
