@@ -26611,10 +26611,14 @@ const cleanElem = (log) => (elem, path) => {
             (elem.value === null ||
                 elem.value.items == null ||
                 elem.value.items.length === 0))) {
-        log(`${path}\t\t: Removed`);
+        log(`Removed: ${path}`);
         return true;
     }
     if (elem.value.type === 'PLAIN') {
+        if (typeof elem.value.value === 'boolean' &&
+            (/\/env\/value$/.test(path) || /^\/data\//.test(path))) {
+            elem.value.value = elem.value.value.toString();
+        }
         if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
             if (typeof elem.value.value === 'number') {
                 elem.value.value = elem.value.value.toString();
@@ -26622,7 +26626,7 @@ const cleanElem = (log) => (elem, path) => {
             else {
                 const newVal = elem.value.value.replace(/000m/, '');
                 if (elem.value.value !== newVal) {
-                    log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+                    log(`Modified: ${path} from "${elem.value.value}" to "${newVal}"`);
                     elem.value.value = newVal;
                 }
             }
@@ -26630,7 +26634,7 @@ const cleanElem = (log) => (elem, path) => {
         if (/\/(limits|requests|hard|soft)\/memory$/.test(path)) {
             const newVal = simplifyRam(elem.value.value);
             if (elem.value.value !== newVal) {
-                log(`${path}\t\t: Changed from "${elem.value.value}" to "${newVal}"`);
+                log(`Modified: ${path} from "${elem.value.value}" to "${newVal}"`);
                 elem.value.value = newVal;
             }
         }
@@ -26701,14 +26705,13 @@ const cleanUpYaml = (doc, logger) => {
 exports.cleanUpYaml = cleanUpYaml;
 const customValidation = (input, customValidation, logger) => {
     logger === null || logger === void 0 ? void 0 : logger.log(JSON.stringify(customValidation, null, 2));
-    return customValidation
-        .filter(v => {
+    const messages = customValidation.map(v => {
         const m = v.regex.exec(input);
         const fail = !!m !== v.expected;
         logger === null || logger === void 0 ? void 0 : logger.log(`${v.regex.source}	:${m ? 'Matched' : 'Not matched'}	${fail ? 'Fail ' : 'Pass'} "${m && m}"`);
-        return fail;
-    })
-        .map(v => v.message);
+        return !fail ? '' : v.message + ((m && '\n' + m.join('\n')) || '');
+    });
+    return messages.filter(m => m != '');
 };
 exports.customValidation = customValidation;
 
@@ -26805,22 +26808,37 @@ const output = (logger, verbose, msg) => {
     logger.log('\n\n' + utils_1.makeBox(msg));
 };
 const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function* () {
-    output(logger, settings.verbose, 'Running kustomize');
-    const resources = yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.kustomizeArgs);
-    output(logger, settings.verbose, 'Removing superfluous kustomize resources');
-    const docs = cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
-    output(logger, settings.verbose, 'Cleaning up YAML');
-    const { cleanedDocs, modified } = docs.reduce((a, d) => {
-        const { doc, modified } = cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined);
-        a.cleanedDocs.push(doc);
-        a.modified = a.modified || modified;
-        return a;
-    }, { cleanedDocs: [], modified: false });
-    if (!modified && settings.verbose) {
-        logger.log('No changes required');
-    }
-    output(logger, settings.verbose, 'Checking for unencrypted secrets');
-    cleanYaml_1.checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
+    const section = (name, fn) => {
+        if (!settings.verbose) {
+            output(logger, false, name);
+            return fn;
+        }
+        return core.group(name, () => __awaiter(void 0, void 0, void 0, function* () {
+            output(logger, true, name);
+            return yield fn();
+        }));
+    };
+    const resources = (yield section('Running kustomize', () => __awaiter(void 0, void 0, void 0, function* () {
+        return yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.kustomizeArgs);
+    })));
+    const docs = (yield section('Removing superfluous kustomize resources', () => __awaiter(void 0, void 0, void 0, function* () {
+        return cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
+    })));
+    const cleanedDocs = (yield section('Cleaning up YAML', () => __awaiter(void 0, void 0, void 0, function* () {
+        const cleaned = docs.reduce((a, d) => {
+            const { doc, modified } = cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined);
+            a.cleanedDocs.push(doc);
+            a.modified = a.modified || modified;
+            return a;
+        }, { cleanedDocs: [], modified: false });
+        if (!cleaned.modified && settings.verbose) {
+            logger.log('No changes required');
+        }
+        return cleaned.cleanedDocs;
+    })));
+    yield section('Checking for unencrypted secrets', () => __awaiter(void 0, void 0, void 0, function* () {
+        cleanYaml_1.checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
+    }));
     const yaml = cleanedDocs
         .map(d => {
         if (d.errors.length) {
@@ -26840,12 +26858,14 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         return a;
     }, []);
     if (settings.validateWithKubeVal) {
-        output(logger, settings.verbose, 'Validating YAML');
-        errors = yield validation_1.default(yaml, logger);
+        yield section('Validating YAML', () => __awaiter(void 0, void 0, void 0, function* () {
+            errors.push(...(yield validation_1.default(yaml, logger)));
+        }));
     }
     if (settings.customValidation.length) {
-        output(logger, settings.verbose, 'Running customValidation tests');
-        errors = errors.concat(cleanYaml_1.customValidation(yaml, settings.customValidation, settings.verbose ? logger : undefined));
+        yield section('Running customValidation tests', () => __awaiter(void 0, void 0, void 0, function* () {
+            errors.push(...cleanYaml_1.customValidation(yaml, settings.customValidation, settings.verbose ? logger : undefined));
+        }));
     }
     return { yaml, errors: errors.filter(e => e !== undefined) };
 });
