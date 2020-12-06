@@ -6,6 +6,7 @@ import {
   checkSecrets,
   cleanUpYaml,
   customValidation,
+  hackyBoolString,
   removeKustomizeValues
 } from './cleanYaml';
 import validateYaml from './validation';
@@ -122,7 +123,7 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     return cleaned.cleanedDocs;
   })) as unknown) as YAML.Document[];
 
-  await section('Checking for unencrypted secrets', async () => {
+  await section('Checking for un-encrypted secrets', async () => {
     checkSecrets(cleanedDocs, settings.allowedSecrets, logger);
   });
 
@@ -137,7 +138,8 @@ const getYaml = async (settings: Settings, logger: Logger) => {
         )}`;
       }
 
-      return YAML.stringify(d);
+      const rx = new RegExp(hackyBoolString.replace(/[^0-9a-z]+/g, '.+'), 'g');
+      return YAML.stringify(d).replace(rx, '');
     })
     .join('---\n');
   let errors = cleanedDocs
