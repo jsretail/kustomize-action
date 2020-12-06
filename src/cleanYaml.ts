@@ -2,6 +2,8 @@ import YAML from 'yaml';
 import {Logger} from './logger';
 import {getLabel} from './utils';
 
+export const hackyBoolString = "fe6edaed2a: 1f4b9:'b989659b53d86025c";
+
 const simplifyRam = (input: string): string => {
   const units = 'kmgtp';
   const inNum = parseInt(input.match(/^\d+/)?.shift() || '0');
@@ -40,10 +42,15 @@ const cleanElem = (log: (s: string) => void) => (elem: any, path: string) => {
     log(`Removed: ${path}`);
     return true;
   }
+  if (
+    ((typeof elem.value.value === 'string' &&
+      /^\s*(true|false|on|off|yes|no)\s*$/gi.test(elem.value.value)) ||
+      typeof elem.value.value === 'boolean') &&
+    (/\/env\/value$/.test(path) || /^\/data\//.test(path))
+  ) {
+    elem.value.value = elem.value.value.toString() + hackyBoolString; // I gave up, sorry
+  }
   if (elem.value.type === 'PLAIN') {
-    if (typeof elem.value.value === 'boolean' && (/\/env\/value$/.test(path) || /^\/data\//.test(path))){
-      elem.value.value = elem.value.value.toString()
-    }
     if (/\/(limits|requests|hard|soft)\/cpu$/.test(path)) {
       if (typeof elem.value.value === 'number') {
         elem.value.value = elem.value.value.toString();
@@ -181,7 +188,7 @@ export const customValidation = (
         fail ? 'Fail ' : 'Pass'
       } "${m && m!}"`
     );
-    return !fail ? '' : v.message + (m && '\n' + m.join('\n') || '');
+    return !fail ? '' : v.message + ((m && '\n' + m.join('\n')) || '');
   });
   return messages.filter(m => m != '');
 };

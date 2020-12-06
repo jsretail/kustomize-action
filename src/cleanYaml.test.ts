@@ -3,7 +3,8 @@ import {
   cleanUpYaml,
   removeKustomizeValues,
   checkSecrets,
-  customValidation
+  customValidation,
+  hackyBoolString
 } from './cleanYaml';
 import {buildTestLogger} from './logger';
 import {parseAllowedSecrets, parseCustomValidation} from './setup';
@@ -47,7 +48,7 @@ spec:
               protocol: TCP
           env:
             - name: foo
-              value: 'bar'
+              value: 'off'
             - name: should_be_string
               value: true
           resources:
@@ -101,7 +102,7 @@ spec:
               protocol: TCP
           env:
             - name: foo
-              value: 'bar'
+              value: 'off'
             - name: should_be_string
               value: "true"
           resources:
@@ -140,12 +141,18 @@ test('cleans up YAML', () => {
 
   for (let i = 0; i < input.length; i++) {
     const result = cleanUpYaml(input[i]);
-    expect(result.doc.toString()).toEqual(clean[i].toString());
+    const rx = new RegExp(hackyBoolString.replace(/[^0-9a-z]+/g,'.+'), 'g');
+    expect(
+      result.doc.toString().replace(rx, '')
+    ).toEqual(clean[i].toString());
     expect(result.modified).toEqual(i == 0);
   }
 });
 test('removeKustomizeValues removes "kind: Values" documents', () => {
-  const input = [...YAML.parseAllDocuments(cleanYaml), YAML.parseDocument(valuesYaml)];
+  const input = [
+    ...YAML.parseAllDocuments(cleanYaml),
+    YAML.parseDocument(valuesYaml)
+  ];
   const result = removeKustomizeValues(input, buildTestLogger());
   expect(result).toHaveLength(2);
   expect(result.toString()).toEqual(
