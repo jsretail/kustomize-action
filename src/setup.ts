@@ -51,7 +51,7 @@ export type Settings = {
   kustomizeArgs: string;
   validateWithKubeVal: boolean;
   reportWarningsAsErrors: boolean;
-  ignoreErrorsRegex: RegExp | undefined;
+  ignoreWarningsErrorsRegex: RegExp | undefined;
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -108,10 +108,7 @@ export const getSettings = (isAction: boolean): Settings => {
     'warnings-as-errors',
     'WARNINGS_AS_ERRORS'
   );
-  const ignoreErrorRegex = getSetting(
-    'ignore-errors-regex',
-    'IGNORE_ERRORS_REGEX'
-  );
+  const ignoreRegex = getSetting('ignore-errors-regex', 'IGNORE_ERRORS_REGEX');
   const customValidation = getSetting(
     'custom-validation-rules',
     'CUSTOM_VALIDATION_RULES',
@@ -161,7 +158,7 @@ export const getSettings = (isAction: boolean): Settings => {
       resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
-    ignoreErrorsRegex: ignoreErrorRegex ? parseRx(ignoreErrorRegex) : undefined
+    ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined
   };
 };
 

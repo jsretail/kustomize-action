@@ -42,7 +42,7 @@ inputs:
     required: false
     default: false
   ignore-errors-regex:
-    description: "Regex to filter out errors, e.g. '/ignore/i'"
+    description: "Regex to filter out warnings and errors, e.g. '/ignore/i'"
     required: false
 outputs:
   yaml:

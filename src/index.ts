@@ -25,7 +25,9 @@ const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
   try {
     const settings = getSettings(isAction);
-    const logger = isAction ? buildActionLogger(settings) : buildConsoleLogger(settings);
+    const logger = isAction
+      ? buildActionLogger(settings)
+      : buildConsoleLogger(settings);
     if (!isAction) {
       logger.warn(
         'Not running as action because GITHUB_WORKFLOW env var is not set'
@@ -77,10 +79,10 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     if (!settings.verbose) {
       output(logger, false, name);
       return await fn();
-     }
+    }
     // return core.group(name, async () => {
-       output(logger, true, name);
-       return await fn();
+    output(logger, true, name);
+    return await fn();
     //   return await fn();
     // });
   };

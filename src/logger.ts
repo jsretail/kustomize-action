@@ -50,25 +50,30 @@ export const buildTestLogger = (
       kustomizeArgs: defaultKustomizeArgs,
       validateWithKubeVal: true,
       reportWarningsAsErrors: false,
-      ignoreErrorsRegex: undefined
+      ignoreWarningsErrorsRegex: undefined
     }
   );
 
 const setupLogger = (logger: Logger, settings: Settings): Logger => {
-  const logError = (msg: string | Error) => {
+  const possSuppressed = (
+    msg: string | Error,
+    log: (msg: string | Error) => void
+  ) => {
     if (
-      !settings.ignoreErrorsRegex ||
-      !settings.ignoreErrorsRegex.test(msg.toString())
+      !settings.ignoreWarningsErrorsRegex ||
+      !settings.ignoreWarningsErrorsRegex.test(msg.toString())
     ) {
-      logger.error(msg);
+      log(msg);
     } else {
-      logger.log('Suppressed error: ' + msg);
+      logger.log('Suppressed: ' + msg);
     }
   };
   return {
     log: (msg: string) => logger.log(msg),
     warn: (msg: string | Error) =>
-      settings.reportWarningsAsErrors ? logError(msg) : logger.warn(msg),
-    error: (msg: string | Error) => logError(msg)
+      settings.reportWarningsAsErrors
+        ? possSuppressed(msg, logger.error)
+        : possSuppressed(msg, logger.warn),
+    error: (msg: string | Error) => possSuppressed(msg, logger.error)
   };
 };
