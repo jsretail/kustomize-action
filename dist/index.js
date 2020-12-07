@@ -26769,12 +26769,14 @@ const outputs_1 = __webpack_require__(1698);
 const utils_1 = __webpack_require__(1314);
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const isAction = !!process.env.GITHUB_EVENT_NAME;
-    const logger = isAction ? logger_1.buildActionLogger() : logger_1.buildConsoleLogger();
-    if (!isAction) {
-        logger.warn('Not running as action because GITHUB_WORKFLOW env var is not set');
-    }
     try {
         const settings = setup_1.getSettings(isAction);
+        const logger = isAction
+            ? logger_1.buildActionLogger(settings)
+            : logger_1.buildConsoleLogger(settings);
+        if (!isAction) {
+            logger.warn('Not running as action because GITHUB_WORKFLOW env var is not set');
+        }
         output(logger, settings.verbose, 'Parsing and validating settings');
         if (settings.verbose) {
             console.log(yaml_1.default.stringify(settings));
@@ -26788,15 +26790,14 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             yield outputs_1.runActions(yaml, errors, settings, logger);
         }
         if (errors.length) {
-            throw new Error('Invalid yaml:\n' + errors.join('\n'));
+            throw new Error(errors.join('\n'));
         }
         logger.log('Finished');
     }
     catch (error) {
-        console.log(error);
-        logger.error(error.message);
+        const toReport = error.message ? error.message : error.toString();
         if (isAction) {
-            core.setFailed(error.message || 'Failed');
+            core.setFailed(toReport);
         }
         else {
             process.exit(1);
@@ -26811,16 +26812,17 @@ const output = (logger, verbose, msg) => {
     logger.log('\n\n' + utils_1.makeBox(msg));
 };
 const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function* () {
-    const section = (name, fn) => {
+    const section = (name, fn) => __awaiter(void 0, void 0, void 0, function* () {
         if (!settings.verbose) {
             output(logger, false, name);
-            return fn;
-        }
-        return core.group(name, () => __awaiter(void 0, void 0, void 0, function* () {
-            output(logger, true, name);
             return yield fn();
-        }));
-    };
+        }
+        // return core.group(name, async () => {
+        output(logger, true, name);
+        return yield fn();
+        //   return await fn();
+        // });
+    });
     const resources = (yield section('Running kustomize', () => __awaiter(void 0, void 0, void 0, function* () {
         return yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.kustomizeArgs);
     })));
@@ -26846,7 +26848,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         .map(d => {
         if (d.errors.length) {
             console.warn(`Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`);
-            return `# Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors)}`;
+            return `# Document ${utils_1.getLabel(d)} has errors:\n${yaml_1.default.stringify(d.errors).replace(/\n/g, '\\n')}`;
         }
         const rx = new RegExp(cleanYaml_1.hackyBoolString.replace(/[^0-9a-z]+/g, '.+'), 'g');
         return yaml_1.default.stringify(d).replace(rx, '');
@@ -26985,24 +26987,55 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.buildTestLogger = exports.buildConsoleLogger = exports.buildActionLogger = void 0;
 const core = __importStar(__webpack_require__(2186));
-const buildActionLogger = () => ({
+const setup_1 = __webpack_require__(8429);
+const buildActionLogger = (settings) => setupLogger({
     log: (msg) => core.info(msg),
     warn: (msg) => core.warning(msg),
     error: (msg) => core.error(msg)
-});
+}, settings);
 exports.buildActionLogger = buildActionLogger;
-const buildConsoleLogger = () => ({
+const buildConsoleLogger = (settings) => setupLogger({
     log: (msg) => console.log(msg),
     warn: (msg) => console.warn(msg),
     error: (msg) => console.error(msg)
-});
+}, settings);
 exports.buildConsoleLogger = buildConsoleLogger;
-const buildTestLogger = (logs, warnings, errors) => ({
+const buildTestLogger = (settings, logs, warnings, errors) => setupLogger({
     log: (msg) => logs === null || logs === void 0 ? void 0 : logs.push(msg),
     warn: (msg) => warnings === null || warnings === void 0 ? void 0 : warnings.push(msg),
     error: (msg) => errors === null || errors === void 0 ? void 0 : errors.push(msg)
+}, settings || {
+    kustomizePath: '',
+    allowedSecrets: [],
+    verbose: true,
+    outputActions: [],
+    extraResources: [],
+    customValidation: [],
+    requiredBins: [],
+    kustomizeArgs: setup_1.defaultKustomizeArgs,
+    validateWithKubeVal: true,
+    reportWarningsAsErrors: false,
+    ignoreWarningsErrorsRegex: undefined
 });
 exports.buildTestLogger = buildTestLogger;
+const setupLogger = (logger, settings) => {
+    const possSuppressed = (msg, log) => {
+        if (!settings.ignoreWarningsErrorsRegex ||
+            !settings.ignoreWarningsErrorsRegex.test(msg.toString())) {
+            log(msg);
+        }
+        else {
+            logger.log('Suppressed: ' + msg);
+        }
+    };
+    return {
+        log: (msg) => logger.log(msg),
+        warn: (msg) => settings.reportWarningsAsErrors
+            ? possSuppressed(msg, logger.error)
+            : possSuppressed(msg, logger.warn),
+        error: (msg) => possSuppressed(msg, logger.error)
+    };
+};
 
 
 /***/ }),
@@ -27060,7 +27093,9 @@ class LoggerOutputAction {
     }
     invoke(yaml, errors, settings, logger) {
         if (this.logYaml) {
+            core.startGroup('Output YAML');
             logger.log(yaml);
+            core.endGroup();
         }
         if (this.logErrors) {
             errors.forEach(logger.error);
@@ -27283,20 +27318,10 @@ const parseCustomValidation = (customValidation) => customValidation
         .map(i => i.split(/\|/g))
         .map(i => {
         if (i.length >= 3) {
-            const parseRx = (str) => {
-                const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
-                const match = rx.exec(str);
-                if (!match) {
-                    throw new Error('Invalid regex: ' + str);
-                }
-                return match[1]
-                    ? new RegExp(match[1])
-                    : new RegExp(match[2], match[3]);
-            };
             return {
                 message: i.shift(),
                 expected: i.shift().toLowerCase() === 'true',
-                regex: parseRx(i.join('|'))
+                regex: utils_1.parseRx(i.join('|'))
             };
         }
         throw new Error('Invalid custom validation rule "' + i + '": ' + JSON.stringify(i));
@@ -27321,6 +27346,8 @@ const getSettings = (isAction) => {
     const kustomizePath = getSetting('kustomize-path', 'KUSTOMIZE_PATH', true);
     const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
     const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
+    const reportWarningsAsErrors = getSetting('warnings-as-errors', 'WARNINGS_AS_ERRORS');
+    const ignoreRegex = getSetting('ignore-errors-regex', 'IGNORE_ERRORS_REGEX');
     const customValidation = getSetting('custom-validation-rules', 'CUSTOM_VALIDATION_RULES', false);
     const allowedSecrets = getSetting('allowed-secrets', 'ALLOWED_SECRETS');
     const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
@@ -27356,7 +27383,9 @@ const getSettings = (isAction) => {
                 .map(s => s.trim())
             : ['kustomize', 'kubeval', 'helm'],
         kustomizeArgs: utils_1.resolveEnvVars(kustomizeArgs || exports.defaultKustomizeArgs),
-        validateWithKubeVal: utils_1.resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true'
+        validateWithKubeVal: utils_1.resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
+        reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
+        ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined
     };
 };
 exports.getSettings = getSettings;
@@ -27393,7 +27422,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getLabel = exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
+exports.parseRx = exports.getLabel = exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const resolveEnvVars = (str) => str
@@ -27471,6 +27500,15 @@ const getLabel = (doc) => (doc.get('kind') === 'Namespace'
     ? doc.getIn(['metadata', 'name'])
     : `${doc.getIn(['metadata', 'namespace']) || ''}/${doc.getIn(['metadata', 'name']) || 'missing name'}`) + ` (${doc.get('kind') || 'missing kind'})`;
 exports.getLabel = getLabel;
+const parseRx = (str) => {
+    const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
+    const match = rx.exec(str);
+    if (!match) {
+        throw new Error('Invalid regex: ' + str);
+    }
+    return match[1] ? new RegExp(match[1]) : new RegExp(match[2], match[3]);
+};
+exports.parseRx = parseRx;
 
 
 /***/ }),
@@ -27502,7 +27540,7 @@ const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) =>
     child_process_1.execFile(kubeValBin || 'kubeval', ['--strict', '--schema-location', 'http://localhost:' + port, path], (err, stdOut, stdErr) => {
         logger.log(stdOut);
         if (stdErr && stdErr.length) {
-            logger.error(stdErr);
+            logger.warn(stdErr);
         }
         if (err) {
             return rej({ err, stdOut, stdErr });
@@ -27525,7 +27563,7 @@ const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, fun
     }
     catch (errData) {
         if (errData instanceof Error) {
-            logger.error(errData);
+            logger.warn(errData);
             throw errData;
         }
         retVal = errData;
@@ -27533,7 +27571,7 @@ const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, fun
     yield stop();
     const { stdOut, stdErr, err } = retVal;
     const errors = getErrors(stdOut + '\n' + stdErr);
-    errors.forEach(e => logger.error(e || 'undefined'));
+    errors.forEach(e => logger.warn(e || 'undefined'));
     if (err) {
         logger.error(err);
         if (errors.length === 0) {
