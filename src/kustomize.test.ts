@@ -68,6 +68,24 @@ test('throws on error', async () => {
   ).catch(handleError);
   expect.assertions(8);
 });
+
+test('outputs warnings', async () => {
+  const tmpScript = tmp.fileSync({mode: 0o744, discardDescriptor: true});
+  fs.writeFileSync(
+    tmpScript.name,
+    '#!/bin/sh\nprintf "warning\\nwarning!!" >&2;'
+  );
+  const output = await kustomize(
+    tmpDir,
+    [],
+    logger,
+    defaultKustomizeArgs,
+    tmpScript.name
+  );
+  expect(output.warnings).toEqual(['warning', 'warning!!']);
+  tmpScript.removeCallback();
+});
+
 test('outputs yaml', async () => {
   const output = await kustomize(
     tmpDir,
@@ -76,11 +94,12 @@ test('outputs yaml', async () => {
     defaultKustomizeArgs,
     kPath
   );
-  expect(output.map(d => d.toJSON())).toEqual([
+  expect(output.docs.map(d => d.toJSON())).toEqual([
     YAML.parseDocument(getNsYaml('a')).toJSON(),
     YAML.parseDocument(getNsYaml('b')).toJSON()
   ]);
   expect(loggerErrors).toHaveLength(0);
+  expect(output.warnings).toHaveLength(0);
 });
 test('outputs extra resources', async () => {
   const extraResourcePath = cleanUpGetName(tmp.fileSync({postfix: '.yaml'}));
@@ -92,12 +111,13 @@ test('outputs extra resources', async () => {
     defaultKustomizeArgs,
     kPath
   );
-  expect(output.map(d => d.toJSON())).toEqual([
+  expect(output.docs.map(d => d.toJSON())).toEqual([
     YAML.parseDocument(getNsYaml('a')).toJSON(),
     YAML.parseDocument(getNsYaml('b')).toJSON(),
     YAML.parseDocument(getNsYaml('c')).toJSON()
   ]);
   expect(loggerErrors).toHaveLength(0);
+  expect(output.warnings).toHaveLength(0);
 });
 
 const downloadKustomizeBin = (dir: string) => {

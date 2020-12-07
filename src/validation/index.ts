@@ -33,13 +33,13 @@ const getErrors = (text: string) =>
   text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
-    .filter(err => err !== undefined && err.length > 0);
+    .filter(err => err && err.length > 0) as string[];
 
 const main = async (
   yaml: string,
   logger: Logger,
   kubeValBin?: string
-): Promise<(string | undefined)[]> => {
+): Promise<string[]> => {
   const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
   const stop = await server.start(port);
   const {name: tmpYaml} = tmp.fileSync({tmpdir:osTmpDir});
@@ -58,7 +58,7 @@ const main = async (
   const {stdOut, stdErr, err} = retVal;
   const errors = getErrors(stdOut + '\n' + stdErr);
 
-  errors.forEach(e => logger.warn(e || 'undefined'));
+  errors.forEach(logger.warn);
   if (err) {
     logger.error(err);
     if (errors.length === 0) {

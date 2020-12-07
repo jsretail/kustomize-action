@@ -87,14 +87,25 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     // });
   };
 
-  const resources = ((await section('Running kustomize', async () => {
-    return await kustomize(
-      settings.kustomizePath,
-      settings.extraResources,
-      logger,
-      settings.kustomizeArgs
-    );
-  })) as unknown) as YAML.Document[];
+  const errors = [] as string[];
+  const {docs: resources, warnings} = ((await section(
+    'Running kustomize',
+    async () => {
+      return await kustomize(
+        settings.kustomizePath,
+        settings.extraResources,
+        logger,
+        settings.kustomizeArgs
+      );
+    }
+  )) as unknown) as {docs: YAML.Document[]; warnings: string[]};
+
+  if (warnings && warnings.length) {
+    warnings.forEach(logger.warn);
+    if (settings.reportWarningsAsErrors) {
+      errors.push(...warnings);
+    }
+  }
 
   const docs = ((await section(
     'Removing superfluous kustomize resources',
@@ -144,15 +155,18 @@ const getYaml = async (settings: Settings, logger: Logger) => {
       return YAML.stringify(d).replace(rx, '');
     })
     .join('---\n');
-  let errors = cleanedDocs
-    .filter(d => d.errors.length)
-    .reduce((a, d) => {
-      const label = getLabel(d);
-      d.errors.forEach(e => {
-        a.push(`${label} ${e.linePos} ${e.range}: ${e.message}`);
-      });
-      return a;
-    }, [] as (string | undefined)[]);
+  errors.push(
+    ...(cleanedDocs
+      .filter(d => d.errors.length)
+      .reduce((a, d) => {
+        const label = getLabel(d);
+        d.errors.forEach(e => {
+          a.push(`${label} ${e.linePos} ${e.range}: ${e.message}`);
+        });
+        return a;
+      }, [] as (string | undefined)[])
+      .filter(i => i != undefined) as string[])
+  );
 
   if (settings.validateWithKubeVal) {
     await section('Validating YAML', async () => {

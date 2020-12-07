@@ -94,9 +94,15 @@ export default async (
   logger: Logger,
   kustomizeArgs: string,
   binPath?: string
-): Promise<YAML.Document.Parsed[]> => {
+): Promise<{docs: YAML.Document.Parsed[]; warnings: string[]}> => {
   const {dir: tmpPath, cleanUp} = await prepDirectory(path, extraResources);
-  const {stdOut} = await runKustomize(tmpPath, logger, kustomizeArgs, binPath);
+  const {stdOut, stdErr} = await runKustomize(
+    tmpPath,
+    logger,
+    kustomizeArgs,
+    binPath
+  );
   cleanUp();
-  return YAML.parseAllDocuments(stdOut, {prettyErrors: true});
+  const warnings = stdErr.split(/\n/g).filter(l => l.length > 0);
+  return {docs: YAML.parseAllDocuments(stdOut, {prettyErrors: true}), warnings};
 };

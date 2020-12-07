@@ -179,7 +179,13 @@ export const customValidation = (
   customValidation: {regex: RegExp; expected: boolean; message: string}[],
   logger: Logger | undefined
 ): string[] => {
-  logger?.log(JSON.stringify(customValidation, null, 2));
+  customValidation.forEach(v => {
+    logger?.log(
+      `Custom validation: ${v.expected ? 'failing to match' : 'matching'} ${
+        v.regex
+      } will result in ${v.message}`
+    );
+  });
   const messages = customValidation.map(v => {
     const m = v.regex.exec(input);
     const fail = !!m !== v.expected;
