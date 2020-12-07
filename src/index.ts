@@ -23,14 +23,14 @@ import {resolve} from 'path';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
-  const logger = isAction ? buildActionLogger() : buildConsoleLogger();
-  if (!isAction) {
-    logger.warn(
-      'Not running as action because GITHUB_WORKFLOW env var is not set'
-    );
-  }
   try {
     const settings = getSettings(isAction);
+    const logger = isAction ? buildActionLogger(settings) : buildConsoleLogger(settings);
+    if (!isAction) {
+      logger.warn(
+        'Not running as action because GITHUB_WORKFLOW env var is not set'
+      );
+    }
     output(logger, settings.verbose, 'Parsing and validating settings');
     if (settings.verbose) {
       console.log(YAML.stringify(settings));
@@ -51,14 +51,13 @@ const main = async () => {
       await runActions(yaml, errors, settings, logger);
     }
     if (errors.length) {
-      throw new Error('Invalid yaml:\n' + errors.join('\n'));
+      throw new Error(errors.join('\n'));
     }
     logger.log('Finished');
   } catch (error) {
-    console.log(error);
-    logger.error(error.message);
+    const toReport = error.message ? error.message : error.toString();
     if (isAction) {
-      core.setFailed(error.message || 'Failed');
+      core.setFailed(toReport);
     } else {
       process.exit(1);
     }
@@ -74,15 +73,16 @@ const output = (logger: Logger, verbose: boolean, msg: string) => {
 };
 
 const getYaml = async (settings: Settings, logger: Logger) => {
-  const section = (name: string, fn: () => Promise<unknown>) => {
+  const section = async (name: string, fn: () => Promise<unknown>) => {
     if (!settings.verbose) {
       output(logger, false, name);
-      return fn;
-    }
-    return core.group(name, async () => {
-      output(logger, true, name);
       return await fn();
-    });
+     }
+    // return core.group(name, async () => {
+       output(logger, true, name);
+       return await fn();
+    //   return await fn();
+    // });
   };
 
   const resources = ((await section('Running kustomize', async () => {
@@ -135,7 +135,7 @@ const getYaml = async (settings: Settings, logger: Logger) => {
         );
         return `# Document ${getLabel(d)} has errors:\n${YAML.stringify(
           d.errors
-        )}`;
+        ).replace(/\n/g, '\\n')}`;
       }
 
       const rx = new RegExp(hackyBoolString.replace(/[^0-9a-z]+/g, '.+'), 'g');

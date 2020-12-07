@@ -24,7 +24,9 @@ export class LoggerOutputAction implements OutputAction {
   logYaml: boolean = true;
   invoke(yaml: string, errors: string[], settings: Settings, logger: Logger) {
     if (this.logYaml) {
+      core.startGroup('Output YAML');
       logger.log(yaml);
+      core.endGroup();
     }
     if (this.logErrors) {
       errors.forEach(logger.error);

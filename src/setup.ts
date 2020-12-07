@@ -1,4 +1,4 @@
-import {getBinPath, getWorkspaceRoot, resolveEnvVars} from './utils';
+import {getBinPath, getWorkspaceRoot, parseRx, resolveEnvVars} from './utils';
 import * as core from '@actions/core';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -50,6 +50,8 @@ export type Settings = {
   requiredBins: string[];
   kustomizeArgs: string;
   validateWithKubeVal: boolean;
+  reportWarningsAsErrors: boolean;
+  ignoreErrorsRegex: RegExp | undefined;
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -66,17 +68,6 @@ export const parseCustomValidation = (customValidation: string | undefined) =>
         .map(i => i.split(/\|/g))
         .map(i => {
           if (i.length >= 3) {
-            const parseRx = (str: string) => {
-              const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
-              const match = rx.exec(str);
-              if (!match) {
-                throw new Error('Invalid regex: ' + str);
-              }
-              return match[1]
-                ? new RegExp(match[1])
-                : new RegExp(match[2], match[3]);
-            };
-
             return {
               message: i.shift()!,
               expected: i.shift()!.toLowerCase() === 'true',
@@ -113,6 +104,14 @@ export const getSettings = (isAction: boolean): Settings => {
   const kustomizePath = getSetting('kustomize-path', 'KUSTOMIZE_PATH', true);
   const outputActions = getSetting('output-actions', 'OUTPUT_ACTIONS', true);
   const extraResources = getSetting('extra-resources', 'EXTRA_RESOURCES');
+  const reportWarningsAsErrors = getSetting(
+    'warnings-as-errors',
+    'WARNINGS_AS_ERRORS'
+  );
+  const ignoreErrorRegex = getSetting(
+    'ignore-errors-regex',
+    'IGNORE_ERRORS_REGEX'
+  );
   const customValidation = getSetting(
     'custom-validation-rules',
     'CUSTOM_VALIDATION_RULES',
@@ -159,7 +158,10 @@ export const getSettings = (isAction: boolean): Settings => {
       : ['kustomize', 'kubeval', 'helm'],
     kustomizeArgs: resolveEnvVars(kustomizeArgs || defaultKustomizeArgs),
     validateWithKubeVal:
-      resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true'
+      resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
+    reportWarningsAsErrors:
+      resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
+    ignoreErrorsRegex: ignoreErrorRegex ? parseRx(ignoreErrorRegex) : undefined
   };
 };
 

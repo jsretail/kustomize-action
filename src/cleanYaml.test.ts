@@ -162,7 +162,7 @@ test('removeKustomizeValues removes "kind: Values" documents', () => {
 
 test('checkYamlForSecrets', () => {
   const logs: string[] = [];
-  const logger = buildTestLogger(logs);
+  const logger = buildTestLogger(undefined,logs);
   const logMsg = "Didn't find allowed secrets: default/foo";
   expect(() =>
     checkSecrets(

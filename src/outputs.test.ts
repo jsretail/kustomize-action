@@ -28,7 +28,9 @@ describe('output actions', () => {
     customValidation: [],
     requiredBins: [],
     kustomizeArgs: defaultKustomizeArgs,
-    validateWithKubeVal: true
+    validateWithKubeVal: true,
+    reportWarningsAsErrors:false,
+    ignoreErrorsRegex:undefined
   };
   const testYaml = `
 foo: bar
@@ -42,7 +44,7 @@ foo:
   describe('LoggerOutputAction', () => {
     test('logs output', async () => {
       const logs: string[] = [];
-      const logger = buildTestLogger(logs);
+      const logger = buildTestLogger(testSettings,logs);
       const action = new LoggerOutputAction();
 
       await action.invoke(testYaml, testErrors, testSettings, logger);
@@ -50,7 +52,7 @@ foo:
     });
     test('logs errors', async () => {
       const errors: string[] = [];
-      const logger = buildTestLogger([], [], errors);
+      const logger = buildTestLogger(testSettings,[], [], errors);
       const action = new LoggerOutputAction();
       const errs = ['bang', 'kaboom'];
       await action.invoke(testYaml, errs, testSettings, logger);
@@ -67,7 +69,7 @@ foo:
         testYaml,
         testErrors,
         testSettings,
-        buildTestLogger()
+        buildTestLogger(testSettings,)
       );
       expect(outputVars).toEqual({foo: testYaml});
     });
@@ -77,7 +79,7 @@ foo:
       action.outputVariableName = 'foo';
       action.errorsVariableName = 'errors';
       const errs = ['bang'];
-      await action.invoke(testYaml, errs, testSettings, buildTestLogger());
+      await action.invoke(testYaml, errs, testSettings, buildTestLogger(testSettings,));
       expect(outputVars['errors']).toEqual(errs);
     });
   });
@@ -100,7 +102,7 @@ foo:
         testYaml,
         testErrors,
         testSettings,
-        buildTestLogger()
+        buildTestLogger(testSettings,)
       );
       expect(uploaded).toHaveLength(1);
       expect(uploaded[0].name).toEqual(action.name);
@@ -129,7 +131,7 @@ foo:
         testYaml,
         testErrors,
         testSettings,
-        buildTestLogger()
+        buildTestLogger(testSettings,)
       );
       expect(fs.readFileSync(tmpFileYaml).toString()).toEqual(testYaml);
       expect(JSON.parse(fs.readFileSync(tmpFileErrors).toString())).toEqual(
@@ -161,7 +163,7 @@ foo:
             testYaml,
             testErrors,
             testSettings,
-            buildTestLogger()
+            buildTestLogger(testSettings,)
           );
         } finally {
           mockedCwd(__dirname);
@@ -185,13 +187,13 @@ foo:
         testYaml,
         testErrors,
         testSettings,
-        buildTestLogger()
+        buildTestLogger(testSettings,)
       );
       await action.invoke(
         testYaml,
         testErrors,
         testSettings,
-        buildTestLogger()
+        buildTestLogger(testSettings,)
       );
       expect(fs.readFileSync(tmpFile).toString()).toEqual(testYaml + testYaml);
     });
@@ -205,7 +207,7 @@ foo:
       action.yamlFileName = tmpFile;
       const err = await new Promise<any>(res => {
         action
-          .invoke(testYaml, testErrors, testSettings, buildTestLogger())
+          .invoke(testYaml, testErrors, testSettings, buildTestLogger(testSettings,))
           .catch(e => {
             res(e);
           })
@@ -219,7 +221,7 @@ foo:
   });
   test('Runs output actions synchronously', async () => {
     const logs: string[] = [];
-    const testLogger = buildTestLogger(logs);
+    const testLogger = buildTestLogger(testSettings,logs);
 
     class TestOutputAction implements OutputAction {
       type: string = 'TestOutputAction';
