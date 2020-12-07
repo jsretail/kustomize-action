@@ -26911,7 +26911,7 @@ const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(voi
         child_process_1.execFile(binPath || 'kustomize', args, { maxBuffer: 1024 * 1024 * 1024 * 10 }, // If the YAML is bigger than this then we should probably write to disk
         (err, stdOut, stdErr) => {
             if (stdErr && stdErr.length) {
-                logger.warn(stdErr);
+                stdErr.split(/\n/g).forEach(logger.warn);
             }
             if (err) {
                 logger.error(err);
