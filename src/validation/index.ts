@@ -19,7 +19,7 @@ const runKubeVal = (
       (err, stdOut, stdErr) => {
         logger.log(stdOut);
         if (stdErr && stdErr.length) {
-          logger.error(stdErr);
+          logger.warn(stdErr);
         }
         if (err) {
           return rej({err, stdOut, stdErr});
@@ -49,7 +49,7 @@ const main = async (
     retVal = await runKubeVal(tmpYaml, port, logger, kubeValBin);
   } catch (errData) {
     if (errData instanceof Error) {
-      logger.error(errData);
+      logger.warn(errData);
       throw errData;
     }
     retVal = errData;
@@ -58,7 +58,7 @@ const main = async (
   const {stdOut, stdErr, err} = retVal;
   const errors = getErrors(stdOut + '\n' + stdErr);
 
-  errors.forEach(e => logger.error(e || 'undefined'));
+  errors.forEach(e => logger.warn(e || 'undefined'));
   if (err) {
     logger.error(err);
     if (errors.length === 0) {

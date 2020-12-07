@@ -113,3 +113,12 @@ export const getLabel = (doc: YAML.Document) =>
     : `${doc.getIn(['metadata', 'namespace']) || ''}/${
         doc.getIn(['metadata', 'name']) || 'missing name'
       }`) + ` (${doc.get('kind') || 'missing kind'})`;
+
+export const parseRx = (str: string) => {
+  const rx = /(^[^\/].*[^\/]$)|^\/(.*)\/([igmsuy]*)$/; // Parse "this" "/this/" or "/this/ig"
+  const match = rx.exec(str);
+  if (!match) {
+    throw new Error('Invalid regex: ' + str);
+  }
+  return match[1] ? new RegExp(match[1]) : new RegExp(match[2], match[3]);
+};

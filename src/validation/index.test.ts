@@ -73,7 +73,7 @@ spec:
   };
   beforeEach(() => {
     loggerErrors = [];
-    logger = buildTestLogger([], [], loggerErrors);
+    logger = buildTestLogger(undefined,[], [], loggerErrors);
   });
   afterAll(() => {
     cleanup.forEach(f => f());
@@ -105,7 +105,7 @@ spec:
       kPath
     );
     expect(errors).toHaveLength(1);
-    expect(loggerErrors).toHaveLength(2);
+    expect(loggerErrors).toHaveLength(1);
   });
 
   test('Fails on invalid CRD definition', async () => {
@@ -118,7 +118,7 @@ spec:
       kPath
     );
     expect(errors).toHaveLength(3);
-    expect(loggerErrors).toHaveLength(4);
+    expect(loggerErrors).toHaveLength(1);
   });
 
 const downloadKubevalBin = (dir: string) => {

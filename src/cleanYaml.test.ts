@@ -141,10 +141,8 @@ test('cleans up YAML', () => {
 
   for (let i = 0; i < input.length; i++) {
     const result = cleanUpYaml(input[i]);
-    const rx = new RegExp(hackyBoolString.replace(/[^0-9a-z]+/g,'.+'), 'g');
-    expect(
-      result.doc.toString().replace(rx, '')
-    ).toEqual(clean[i].toString());
+    const rx = new RegExp(hackyBoolString.replace(/[^0-9a-z]+/g, '.+'), 'g');
+    expect(result.doc.toString().replace(rx, '')).toEqual(clean[i].toString());
     expect(result.modified).toEqual(i == 0);
   }
 });
@@ -162,7 +160,7 @@ test('removeKustomizeValues removes "kind: Values" documents', () => {
 
 test('checkYamlForSecrets', () => {
   const logs: string[] = [];
-  const logger = buildTestLogger(logs);
+  const logger = buildTestLogger(undefined, logs);
   const logMsg = "Didn't find allowed secrets: default/foo";
   expect(() =>
     checkSecrets(

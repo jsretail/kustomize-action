@@ -37,6 +37,13 @@ inputs:
     description: "Arguments to run kustomize with"
     required: false
     default: "--enable_alpha_plugins"
+  warnings-as-errors:
+    description: "Report warnings as errors"
+    required: false
+    default: false
+  ignore-errors-regex:
+    description: "Regex to filter out warnings and errors, e.g. '/ignore/i'"
+    required: false
 outputs:
   yaml:
     description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'

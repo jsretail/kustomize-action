@@ -18,7 +18,7 @@ const cleanUpGetName = (toCleanup: tmp.FileResult | tmp.DirResult): string => {
 let logger: Logger, loggerErrors: (string | Error)[];
 beforeEach(() => {
   loggerErrors = [];
-  logger = buildTestLogger([], [], loggerErrors);
+  logger = buildTestLogger(undefined, [], [], loggerErrors);
 });
 afterAll(() => cleanup.forEach(f => f()));
 
