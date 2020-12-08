@@ -26707,7 +26707,9 @@ const cleanUpYaml = (doc, logger) => {
 };
 exports.cleanUpYaml = cleanUpYaml;
 const customValidation = (input, customValidation, logger) => {
-    logger === null || logger === void 0 ? void 0 : logger.log(JSON.stringify(customValidation, null, 2));
+    customValidation.forEach(v => {
+        logger === null || logger === void 0 ? void 0 : logger.log(`Custom validation: ${v.expected ? 'failing to match' : 'matching'} ${v.regex} will result in ${v.message}`);
+    });
     const messages = customValidation.map(v => {
         const m = v.regex.exec(input);
         const fail = !!m !== v.expected;
@@ -26823,9 +26825,16 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         //   return await fn();
         // });
     });
-    const resources = (yield section('Running kustomize', () => __awaiter(void 0, void 0, void 0, function* () {
+    const errors = [];
+    const { docs: resources, warnings } = (yield section('Running kustomize', () => __awaiter(void 0, void 0, void 0, function* () {
         return yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.kustomizeArgs);
     })));
+    if (warnings && warnings.length) {
+        warnings.forEach(logger.warn);
+        if (settings.reportWarningsAsErrors) {
+            errors.push(...warnings);
+        }
+    }
     const docs = (yield section('Removing superfluous kustomize resources', () => __awaiter(void 0, void 0, void 0, function* () {
         return cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
     })));
@@ -26854,7 +26863,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         return yaml_1.default.stringify(d).replace(rx, '');
     })
         .join('---\n');
-    let errors = cleanedDocs
+    errors.push(...cleanedDocs
         .filter(d => d.errors.length)
         .reduce((a, d) => {
         const label = utils_1.getLabel(d);
@@ -26862,7 +26871,8 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
             a.push(`${label} ${e.linePos} ${e.range}: ${e.message}`);
         });
         return a;
-    }, []);
+    }, [])
+        .filter(i => i != undefined));
     if (settings.validateWithKubeVal) {
         yield section('Validating YAML', () => __awaiter(void 0, void 0, void 0, function* () {
             errors.push(...(yield validation_1.default(yaml, logger)));
@@ -26952,9 +26962,10 @@ ${extraResources.map(p => '- ' + path_1.default.basename(p)).join('\n')}
 `);
 exports.default = (path, extraResources = [], logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     const { dir: tmpPath, cleanUp } = yield prepDirectory(path, extraResources);
-    const { stdOut } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
+    const { stdOut, stdErr } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
     cleanUp();
-    return yaml_1.default.parseAllDocuments(stdOut, { prettyErrors: true });
+    const warnings = stdErr.split(/\n/g).filter(l => l.length > 0);
+    return { docs: yaml_1.default.parseAllDocuments(stdOut, { prettyErrors: true }), warnings };
 });
 
 
@@ -27551,7 +27562,7 @@ const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) =>
 const getErrors = (text) => text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
-    .filter(err => err !== undefined && err.length > 0);
+    .filter(err => err && err.length > 0);
 const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
     const stop = yield server_1.default.start(port);
@@ -27571,7 +27582,7 @@ const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, fun
     yield stop();
     const { stdOut, stdErr, err } = retVal;
     const errors = getErrors(stdOut + '\n' + stdErr);
-    errors.forEach(e => logger.warn(e || 'undefined'));
+    errors.forEach(logger.warn);
     if (err) {
         logger.error(err);
         if (errors.length === 0) {
