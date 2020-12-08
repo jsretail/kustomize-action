@@ -53,7 +53,7 @@ const main = async () => {
       await runActions(yaml, errors, settings, logger);
     }
     if (errors.length) {
-      throw new Error(errors.join('\n'));
+      throw new Error('Errored');
     }
     logger.log('Finished');
   } catch (error) {
@@ -185,7 +185,17 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     });
   }
 
-  return {yaml, errors: <string[]>errors.filter(e => e !== undefined)};
+  return {
+    yaml,
+    errors: <string[]>(
+      errors.filter(
+        e =>
+          e !== undefined &&
+          (!settings.ignoreWarningsErrorsRegex ||
+            !settings.ignoreWarningsErrorsRegex.test(e))
+      )
+    )
+  };
 };
 
 main();
