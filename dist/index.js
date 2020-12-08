@@ -26792,7 +26792,7 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             yield outputs_1.runActions(yaml, errors, settings, logger);
         }
         if (errors.length) {
-            throw new Error(errors.join('\n'));
+            throw new Error('Errored');
         }
         logger.log('Finished');
     }
@@ -26883,7 +26883,12 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
             errors.push(...cleanYaml_1.customValidation(yaml, settings.customValidation, settings.verbose ? logger : undefined));
         }));
     }
-    return { yaml, errors: errors.filter(e => e !== undefined) };
+    return {
+        yaml,
+        errors: (errors.filter(e => e !== undefined &&
+            (!settings.ignoreWarningsErrorsRegex ||
+                !settings.ignoreWarningsErrorsRegex.test(e))))
+    };
 });
 main();
 
