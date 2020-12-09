@@ -11,8 +11,14 @@ export const buildActionLogger = (settings: Settings): Logger =>
   setupLogger(
     {
       log: (msg: string) => core.info(msg),
-      warn: (msg: string | Error) => core.warning(msg),
-      error: (msg: string | Error) => core.error(msg)
+      warn: (msg: string | Error) => {
+        console.trace();
+        core.warning(msg);
+      },
+      error: (msg: string | Error) => {
+        console.trace();
+        core.error(msg);
+      }
     },
     settings
   );
@@ -55,15 +61,19 @@ export const buildTestLogger = (
   );
 
 const setupLogger = (logger: Logger, settings: Settings): Logger => {
+  const previousMessages = new Set() as Set<string>;
   const possSuppressed = (
     msg: string | Error,
-    log: (msg: string | Error) => void
+    fLog: (msg: string | Error) => void
   ) => {
+    const key = msg + '_' + fLog.name;
     if (
-      !settings.ignoreWarningsErrorsRegex ||
-      !settings.ignoreWarningsErrorsRegex.test(msg.toString())
+      !previousMessages.has(key) &&
+      (!settings.ignoreWarningsErrorsRegex ||
+        !settings.ignoreWarningsErrorsRegex.test(msg.toString()))
     ) {
-      log(msg);
+      previousMessages.add(key);
+      fLog(msg);
     } else {
       logger.log('Suppressed: ' + msg);
     }

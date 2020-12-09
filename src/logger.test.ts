@@ -31,6 +31,26 @@ it('logs warnings as errors', () => {
   expect(warnings).not.toContain(foo);
 });
 
+it('deduplicates errors', () => {
+  const logs = [] as string[];
+  const warnings = [] as string[];
+  const errors = [] as string[];
+  const logger = buildTestLogger(
+    getSettings(false, undefined),
+    logs,
+    warnings,
+    errors
+  );
+  logger.warn('foo');
+  logger.warn('foo');
+  logger.error('foo');
+  logger.error('foo');
+  logger.error('bar');
+  expect(warnings).toHaveLength(1);
+  expect(errors).toHaveLength(2);
+  expect(logs).toHaveLength(2);
+});
+
 it('ignores errors', () => {
   const logs = [] as string[];
   const warnings = [] as string[];

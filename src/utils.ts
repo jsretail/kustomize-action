@@ -122,3 +122,13 @@ export const parseRx = (str: string) => {
   }
   return match[1] ? new RegExp(match[1]) : new RegExp(match[2], match[3]);
 };
+
+export const aggregateCount = (msgs: string[]) => {
+  const grouped = msgs.reduce((a: any, i: string) => {
+    a[i] = (a[i] || 0) + 1;
+    return a;
+  }, {});
+  return Object.keys(grouped).map(
+    i => i + (((grouped[i] as unknown) as number) > 1 ? ' x' + grouped[i] : '')
+  );
+};
