@@ -3,6 +3,7 @@ import {execFile} from 'child_process';
 import fs from 'fs';
 import {Logger} from '../logger';
 import server from './server';
+import { aggregateCount } from '../utils';
 
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
 
@@ -30,10 +31,10 @@ const runKubeVal = (
   });
 
 const getErrors = (text: string) =>
-  text
+aggregateCount(text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
-    .filter(err => err && err.length > 0) as string[];
+    .filter(err => err && err.length > 0) as string[]);
 
 const main = async (
   yaml: string,

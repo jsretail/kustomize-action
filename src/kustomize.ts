@@ -4,6 +4,7 @@ import path from 'path';
 import tmp from 'tmp';
 import YAML from 'yaml';
 import {Logger} from './logger';
+import {aggregateCount} from './utils';
 
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
 
@@ -22,7 +23,7 @@ const runKustomize = async (
       {maxBuffer: 1024 * 1024 * 1024 * 10}, // If the YAML is bigger than this then we should probably write to disk
       (err, stdOut, stdErr) => {
         if (stdErr && stdErr.length) {
-          stdErr.split(/\n/g).forEach(logger.warn);
+          aggregateCount(stdErr.split(/\n/g)).forEach(logger.warn);
         }
         if (err) {
           logger.error(err);
