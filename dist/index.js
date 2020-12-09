@@ -26918,6 +26918,7 @@ const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const tmp_1 = __importDefault(__webpack_require__(8517));
 const yaml_1 = __importDefault(__webpack_require__(3552));
+const utils_1 = __webpack_require__(1314);
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
 const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((res, rej) => {
@@ -26926,7 +26927,7 @@ const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(voi
         child_process_1.execFile(binPath || 'kustomize', args, { maxBuffer: 1024 * 1024 * 1024 * 10 }, // If the YAML is bigger than this then we should probably write to disk
         (err, stdOut, stdErr) => {
             if (stdErr && stdErr.length) {
-                stdErr.split(/\n/g).forEach(logger.warn);
+                utils_1.aggregateCount(stdErr.split(/\n/g)).forEach(logger.warn);
             }
             if (err) {
                 logger.error(err);
@@ -27006,8 +27007,14 @@ const core = __importStar(__webpack_require__(2186));
 const setup_1 = __webpack_require__(8429);
 const buildActionLogger = (settings) => setupLogger({
     log: (msg) => core.info(msg),
-    warn: (msg) => core.warning(msg),
-    error: (msg) => core.error(msg)
+    warn: (msg) => {
+        console.trace();
+        core.warning(msg);
+    },
+    error: (msg) => {
+        console.trace();
+        core.error(msg);
+    }
 }, settings);
 exports.buildActionLogger = buildActionLogger;
 const buildConsoleLogger = (settings) => setupLogger({
@@ -27035,10 +27042,14 @@ const buildTestLogger = (settings, logs, warnings, errors) => setupLogger({
 });
 exports.buildTestLogger = buildTestLogger;
 const setupLogger = (logger, settings) => {
-    const possSuppressed = (msg, log) => {
-        if (!settings.ignoreWarningsErrorsRegex ||
-            !settings.ignoreWarningsErrorsRegex.test(msg.toString())) {
-            log(msg);
+    const previousMessages = new Set();
+    const possSuppressed = (msg, fLog) => {
+        const key = msg + '_' + fLog.name;
+        if (!previousMessages.has(key) &&
+            (!settings.ignoreWarningsErrorsRegex ||
+                !settings.ignoreWarningsErrorsRegex.test(msg.toString()))) {
+            previousMessages.add(key);
+            fLog(msg);
         }
         else {
             logger.log('Suppressed: ' + msg);
@@ -27438,7 +27449,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseRx = exports.getLabel = exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
+exports.aggregateCount = exports.parseRx = exports.getLabel = exports.makeBox = exports.mockedCwd = exports.getWorkspaceRoot = exports.getBinPath = exports.resolveEnvVars = void 0;
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const resolveEnvVars = (str) => str
@@ -27525,6 +27536,14 @@ const parseRx = (str) => {
     return match[1] ? new RegExp(match[1]) : new RegExp(match[2], match[3]);
 };
 exports.parseRx = parseRx;
+const aggregateCount = (msgs) => {
+    const grouped = msgs.reduce((a, i) => {
+        a[i] = (a[i] || 0) + 1;
+        return a;
+    }, {});
+    return Object.keys(grouped).map(i => i + (grouped[i] > 1 ? ' x' + grouped[i] : ''));
+};
+exports.aggregateCount = aggregateCount;
 
 
 /***/ }),
@@ -27551,6 +27570,7 @@ const tmp_1 = __importDefault(__webpack_require__(8517));
 const child_process_1 = __webpack_require__(3129);
 const fs_1 = __importDefault(__webpack_require__(5747));
 const server_1 = __importDefault(__webpack_require__(2925));
+const utils_1 = __webpack_require__(1314);
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
 const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) => {
     child_process_1.execFile(kubeValBin || 'kubeval', ['--strict', '--schema-location', 'http://localhost:' + port, path], (err, stdOut, stdErr) => {
@@ -27564,10 +27584,10 @@ const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) =>
         res({ stdOut, stdErr });
     });
 });
-const getErrors = (text) => text
+const getErrors = (text) => utils_1.aggregateCount(text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
-    .filter(err => err && err.length > 0);
+    .filter(err => err && err.length > 0));
 const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
     const stop = yield server_1.default.start(port);
