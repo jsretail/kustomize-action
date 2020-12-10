@@ -26672,25 +26672,41 @@ const removeKustomizeValues = (docs, logger) => docs.filter(d => {
     return !toRemove;
 });
 exports.removeKustomizeValues = removeKustomizeValues;
-const disjunctiveIntersectSecrets = (x, y) => x.filter(s => !!!y.find(a => a.namespace === s.namespace && a.name === s.name));
+const findUnmatchedSecrets = (secrets, patterns) => {
+    const globMatch = (p, i) => p.indexOf('*') === -1
+        ? p === i
+        : new RegExp(p.replace(/\*/g, '.*')).test(i);
+    const secretPatternMatcher = (s) => (a, p) => a ||
+        (p && globMatch(p.name, s.name) && globMatch(p.namespace, s.namespace)
+            ? p
+            : undefined);
+    return secrets.reduce((a, s) => {
+        const matchingPattern = patterns.reduce(secretPatternMatcher(s), undefined);
+        if (!matchingPattern) {
+            a.unMatchedSecrets.push(s);
+        }
+        else {
+            a.matchedPatterns.add(`${matchingPattern.namespace}/${matchingPattern.name}`);
+        }
+        return a;
+    }, { unMatchedSecrets: [], matchedPatterns: new Set() });
+};
 const checkSecrets = (docs, allowedSecrets, logger) => {
     const secrets = docs
         .filter(d => d.get('kind') === 'Secret')
         .map(s => s.get('metadata'))
         .map(m => ({ name: m.get('name'), namespace: m.get('namespace') }));
     logger === null || logger === void 0 ? void 0 : logger.log('Found secrets: ' + secrets.map(s => s.namespace + '/' + s.name).join(', '));
-    logger === null || logger === void 0 ? void 0 : logger.log("Didn't find allowed secrets: " +
-        disjunctiveIntersectSecrets(allowedSecrets, secrets)
+    const { unMatchedSecrets, matchedPatterns } = findUnmatchedSecrets(secrets, allowedSecrets);
+    logger === null || logger === void 0 ? void 0 : logger.log("Didn't match any secrets with: " +
+        allowedSecrets
             .map(s => s.namespace + '/' + s.name)
+            .filter(s => !matchedPatterns.has(s))
             .join(', '));
-    const invalidSecrets = disjunctiveIntersectSecrets(secrets, allowedSecrets);
-    if (invalidSecrets.length > 0) {
-        throw new Error(`Invalid secrets: ${invalidSecrets
+    if (unMatchedSecrets.length > 0) {
+        throw new Error(`Invalid secrets: ${unMatchedSecrets
             .map(s => s.namespace + '/' + s.name)
             .join(', ')}`);
-    }
-    if (secrets.length > allowedSecrets.length) {
-        throw new Error(`Found ${secrets.length} secrets (${secrets.map(s => s.namespace + '/' + s.name)}) but only ${allowedSecrets.length} are allowed`);
     }
 };
 exports.checkSecrets = checkSecrets;
@@ -26827,7 +26843,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
     });
     const errors = [];
     const { docs: resources, warnings } = (yield section('Running kustomize', () => __awaiter(void 0, void 0, void 0, function* () {
-        return yield kustomize_1.default(settings.kustomizePath, settings.extraResources, logger, settings.kustomizeArgs);
+        return yield kustomize_1.default(settings, logger);
     })));
     if (warnings && warnings.length) {
         warnings.forEach(logger.warn);
@@ -26900,6 +26916,25 @@ main();
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -26914,18 +26949,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const child_process_1 = __webpack_require__(3129);
+const core = __importStar(__webpack_require__(2186));
 const fs_1 = __importDefault(__webpack_require__(5747));
 const path_1 = __importDefault(__webpack_require__(5622));
 const tmp_1 = __importDefault(__webpack_require__(8517));
 const yaml_1 = __importDefault(__webpack_require__(3552));
 const utils_1 = __webpack_require__(1314);
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
-const runKustomize = (rootPath, logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
+const runKustomize = (rootPath, settings, logger, binPath) => __awaiter(void 0, void 0, void 0, function* () {
     return new Promise((res, rej) => {
-        const args = ['build', rootPath, ...kustomizeArgs.split(/\ +/g)];
+        const args = ['build', rootPath, ...settings.kustomizeArgs.split(/\ +/g)];
         logger.log('Running: ' + [binPath || 'kustomize', ...args].join(' '));
         child_process_1.execFile(binPath || 'kustomize', args, { maxBuffer: 1024 * 1024 * 1024 * 10 }, // If the YAML is bigger than this then we should probably write to disk
         (err, stdOut, stdErr) => {
+            if (settings.verbose) {
+                core.startGroup('STDOUT');
+                logger.log(stdOut);
+                core.endGroup();
+                core.startGroup('STDERR');
+                logger.log(stdErr);
+                core.endGroup();
+            }
             if (stdErr && stdErr.length) {
                 utils_1.aggregateCount(stdErr.split(/\n/g)).forEach(logger.warn);
             }
@@ -26966,9 +27010,9 @@ bases:
 resources:
 ${extraResources.map(p => '- ' + path_1.default.basename(p)).join('\n')}
 `);
-exports.default = (path, extraResources = [], logger, kustomizeArgs, binPath) => __awaiter(void 0, void 0, void 0, function* () {
-    const { dir: tmpPath, cleanUp } = yield prepDirectory(path, extraResources);
-    const { stdOut, stdErr } = yield runKustomize(tmpPath, logger, kustomizeArgs, binPath);
+exports.default = (settings, logger, binPath) => __awaiter(void 0, void 0, void 0, function* () {
+    const { dir: tmpPath, cleanUp } = yield prepDirectory(settings.kustomizePath, settings.extraResources);
+    const { stdOut, stdErr } = yield runKustomize(tmpPath, settings, logger, binPath);
     cleanUp();
     const warnings = stdErr.split(/\n/g).filter(l => l.length > 0);
     return { docs: yaml_1.default.parseAllDocuments(stdOut, { prettyErrors: true }), warnings };
@@ -27005,22 +27049,22 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.buildTestLogger = exports.buildConsoleLogger = exports.buildActionLogger = void 0;
 const core = __importStar(__webpack_require__(2186));
 const setup_1 = __webpack_require__(8429);
+const logPossError = (msg, fn) => {
+    fn(msg.message ? msg.message : msg);
+    if (msg instanceof Error) {
+        console.trace();
+    }
+};
 const buildActionLogger = (settings) => setupLogger({
     log: (msg) => core.info(msg),
-    warn: (msg) => {
-        console.trace();
-        core.warning(msg);
-    },
-    error: (msg) => {
-        console.trace();
-        core.error(msg);
-    }
+    warn: (msg) => logPossError(msg, core.warning),
+    error: (msg) => logPossError(msg, core.error)
 }, settings);
 exports.buildActionLogger = buildActionLogger;
 const buildConsoleLogger = (settings) => setupLogger({
     log: (msg) => console.log(msg),
-    warn: (msg) => console.warn(msg),
-    error: (msg) => console.error(msg)
+    warn: (msg) => logPossError(msg, console.warn),
+    error: (msg) => logPossError(msg, console.error)
 }, settings);
 exports.buildConsoleLogger = buildConsoleLogger;
 const buildTestLogger = (settings, logs, warnings, errors) => setupLogger({
@@ -27120,9 +27164,7 @@ class LoggerOutputAction {
     }
     invoke(yaml, errors, settings, logger) {
         if (this.logYaml) {
-            core.startGroup('Output YAML');
             logger.log(yaml);
-            core.endGroup();
         }
         if (this.logErrors) {
             errors.forEach(logger.error);
