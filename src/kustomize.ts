@@ -1,27 +1,37 @@
 import {execFile} from 'child_process';
+import * as core from '@actions/core';
 import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import YAML from 'yaml';
 import {Logger} from './logger';
+import {Settings} from './setup';
 import {aggregateCount} from './utils';
 
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp.tmpdir;
 
 const runKustomize = async (
   rootPath: string,
+  settings: Settings,
   logger: Logger,
-  kustomizeArgs: string,
   binPath?: string
 ) =>
   new Promise<{stdOut: string; stdErr: string}>((res, rej) => {
-    const args = ['build', rootPath, ...kustomizeArgs.split(/\ +/g)];
+    const args = ['build', rootPath, ...settings.kustomizeArgs.split(/\ +/g)];
     logger.log('Running: ' + [binPath || 'kustomize', ...args].join(' '));
     execFile(
       binPath || 'kustomize',
       args,
       {maxBuffer: 1024 * 1024 * 1024 * 10}, // If the YAML is bigger than this then we should probably write to disk
       (err, stdOut, stdErr) => {
+        if (settings.verbose) {
+          core.startGroup('STDOUT');
+          logger.log(stdOut);
+          core.endGroup();
+          core.startGroup('STDERR');
+          logger.log(stdErr);
+          core.endGroup();
+        }
         if (stdErr && stdErr.length) {
           aggregateCount(stdErr.split(/\n/g)).forEach(logger.warn);
         }
@@ -90,17 +100,18 @@ ${extraResources.map(p => '- ' + path.basename(p)).join('\n')}
   );
 
 export default async (
-  path: string,
-  extraResources: string[] = [],
+  settings: Settings,
   logger: Logger,
-  kustomizeArgs: string,
   binPath?: string
 ): Promise<{docs: YAML.Document.Parsed[]; warnings: string[]}> => {
-  const {dir: tmpPath, cleanUp} = await prepDirectory(path, extraResources);
+  const {dir: tmpPath, cleanUp} = await prepDirectory(
+    settings.kustomizePath,
+    settings.extraResources
+  );
   const {stdOut, stdErr} = await runKustomize(
     tmpPath,
+    settings,
     logger,
-    kustomizeArgs,
     binPath
   );
   cleanUp();

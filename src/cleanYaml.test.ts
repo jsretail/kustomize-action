@@ -161,10 +161,10 @@ test('removeKustomizeValues removes "kind: Values" documents', () => {
 test('checkYamlForSecrets', () => {
   const logs: string[] = [];
   const logger = buildTestLogger(undefined, logs);
-  const logMsg = "Didn't find allowed secrets: default/foo";
+  const logMsg = "Didn't match any secrets with: default/foo";
   expect(() =>
     checkSecrets(
-      [YAML.parseDocument(cleanYaml)],
+      [...YAML.parseAllDocuments(cleanYaml)],
       parseAllowedSecrets('default/foo'),
       logger
     )
@@ -195,6 +195,20 @@ test('checkYamlForSecrets', () => {
       logger
     )
   ).toThrow();
+  expect(() =>
+    checkSecrets(
+      [createSecret('default', 'foo'), createSecret('default', 'bar')],
+      parseAllowedSecrets('default/*'),
+      logger
+    )
+  ).not.toThrow();
+  expect(() =>
+    checkSecrets(
+      [createSecret('default', 'bar'), createSecret('default', 'baz')],
+      parseAllowedSecrets('de*t/ba*'),
+      logger
+    )
+  ).not.toThrow();
 });
 
 const rules = parseCustomValidation(
