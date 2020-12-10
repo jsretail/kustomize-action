@@ -7,18 +7,21 @@ export interface Logger {
   error: (msg: string | Error) => void;
 }
 
+const logPossError = (
+  msg: string | Error,
+  fn: (msg: string | Error) => void
+) => {
+  fn((<Error>msg).message ? (<Error>msg).message : msg);
+  if (msg instanceof Error) {
+    console.trace();
+  }
+};
 export const buildActionLogger = (settings: Settings): Logger =>
   setupLogger(
     {
       log: (msg: string) => core.info(msg),
-      warn: (msg: string | Error) => {
-        console.trace();
-        core.warning((<Error>msg).message ? (<Error>msg).message : msg);
-      },
-      error: (msg: string | Error) => {
-        console.trace();
-        core.error((<Error>msg).message ? (<Error>msg).message : msg);
-      }
+      warn: (msg: string | Error) => logPossError(msg, core.warning),
+      error: (msg: string | Error) => logPossError(msg, core.error)
     },
     settings
   );
@@ -27,10 +30,8 @@ export const buildConsoleLogger = (settings: Settings): Logger =>
   setupLogger(
     {
       log: (msg: string) => console.log(msg),
-      warn: (msg: string | Error) =>
-        console.warn((<Error>msg).message ? (<Error>msg).message : msg),
-      error: (msg: string | Error) =>
-        console.error((<Error>msg).message ? (<Error>msg).message : msg)
+      warn: (msg: string | Error) => logPossError(msg, console.warn),
+      error: (msg: string | Error) => logPossError(msg, console.error)
     },
     settings
   );
