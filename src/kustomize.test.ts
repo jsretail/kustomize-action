@@ -6,7 +6,7 @@ import YAML from 'yaml';
 import kustomize from './kustomize';
 import {getBinPath} from './utils';
 import {buildTestLogger, Logger} from './logger';
-import {createKustomizeFolder, defaultKustomizeArgs} from './setup';
+import {createKustomizeFolder, defaultKustomizeArgs, Settings} from './setup';
 
 let tmpDir: string, kPath: string | undefined;
 let cleanup: (() => void)[] = [];
@@ -14,6 +14,23 @@ const cleanUpGetName = (toCleanup: tmp.FileResult | tmp.DirResult): string => {
   cleanup.push(toCleanup.removeCallback);
   return toCleanup.name;
 };
+const getSettings = (
+  kustomizePath: string,
+  extraResources: string[],
+  kustomizeArgs: string
+): Settings => ({
+  kustomizePath,
+  allowedSecrets: [],
+  verbose: true,
+  outputActions: [],
+  extraResources,
+  customValidation: [],
+  requiredBins: [],
+  kustomizeArgs,
+  validateWithKubeVal: true,
+  reportWarningsAsErrors: false,
+  ignoreWarningsErrorsRegex: undefined
+});
 
 let logger: Logger, loggerErrors: (string | Error)[];
 beforeEach(() => {
@@ -39,31 +56,27 @@ test('throws on error', async () => {
     expect(loggerErrors).not.toHaveLength(0);
   };
   await kustomize(
-    tmpDir,
-    [],
+    getSettings(tmpDir, [], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     'dukhsdkjsdhkj'
   ).catch(handleError);
   await kustomize(
-    'this is invalid',
-    [],
+    getSettings('this is invalid', [], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     kPath
   ).catch(handleError);
   await kustomize(
-    cleanUpGetName(tmp.dirSync({unsafeCleanup: true})),
-    [],
+    getSettings(
+      cleanUpGetName(tmp.dirSync({unsafeCleanup: true})),
+      [],
+      defaultKustomizeArgs
+    ),
     logger,
-    defaultKustomizeArgs,
     kPath
   ).catch(handleError);
   await kustomize(
-    tmpDir,
-    ['/IDontExist'],
+    getSettings(tmpDir, ['/IDontExist'], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     kPath
   ).catch(handleError);
   expect.assertions(8);
@@ -76,10 +89,8 @@ test('outputs warnings', async () => {
     '#!/bin/sh\nprintf "warning\\nwarning!!" >&2;'
   );
   const output = await kustomize(
-    tmpDir,
-    [],
+    getSettings(tmpDir, [], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     tmpScript.name
   );
   expect(output.warnings).toEqual(['warning', 'warning!!']);
@@ -88,10 +99,8 @@ test('outputs warnings', async () => {
 
 test('outputs yaml', async () => {
   const output = await kustomize(
-    tmpDir,
-    [],
+    getSettings(tmpDir, [], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     kPath
   );
   expect(output.docs.map(d => d.toJSON())).toEqual([
@@ -105,10 +114,8 @@ test('outputs extra resources', async () => {
   const extraResourcePath = cleanUpGetName(tmp.fileSync({postfix: '.yaml'}));
   fs.writeFileSync(extraResourcePath, getNsYaml('c'));
   const output = await kustomize(
-    tmpDir,
-    [extraResourcePath],
+    getSettings(tmpDir, [extraResourcePath], defaultKustomizeArgs),
     logger,
-    defaultKustomizeArgs,
     kPath
   );
   expect(output.docs.map(d => d.toJSON())).toEqual([

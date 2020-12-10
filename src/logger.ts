@@ -13,11 +13,11 @@ export const buildActionLogger = (settings: Settings): Logger =>
       log: (msg: string) => core.info(msg),
       warn: (msg: string | Error) => {
         console.trace();
-        core.warning(msg);
+        core.warning((<Error>msg).message ? (<Error>msg).message : msg);
       },
       error: (msg: string | Error) => {
         console.trace();
-        core.error(msg);
+        core.error((<Error>msg).message ? (<Error>msg).message : msg);
       }
     },
     settings
@@ -27,8 +27,10 @@ export const buildConsoleLogger = (settings: Settings): Logger =>
   setupLogger(
     {
       log: (msg: string) => console.log(msg),
-      warn: (msg: string | Error) => console.warn(msg),
-      error: (msg: string | Error) => console.error(msg)
+      warn: (msg: string | Error) =>
+        console.warn((<Error>msg).message ? (<Error>msg).message : msg),
+      error: (msg: string | Error) =>
+        console.error((<Error>msg).message ? (<Error>msg).message : msg)
     },
     settings
   );

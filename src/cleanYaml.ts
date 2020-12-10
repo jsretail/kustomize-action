@@ -112,10 +112,41 @@ export const removeKustomizeValues = (
     return !toRemove;
   });
 
-const disjunctiveIntersectSecrets = (x: SecretMeta[], y: SecretMeta[]) =>
-  x.filter(
-    s => !!!y.find(a => a.namespace === s.namespace && a.name === s.name)
+const findUnmatchedSecrets = (
+  secrets: SecretMeta[],
+  patterns: SecretMeta[]
+) => {
+  const globMatch = (p: string, i: string) =>
+    p.indexOf('*') === -1
+      ? p === i
+      : new RegExp(p.replace(/\*/g, '.*')).test(i);
+
+  const secretPatternMatcher = (s: SecretMeta) => (
+    a: SecretMeta | undefined,
+    p: SecretMeta | undefined
+  ) =>
+    a ||
+    (p && globMatch(p.name, s.name) && globMatch(p.namespace, s.namespace)
+      ? p
+      : undefined);
+  return secrets.reduce(
+    (a, s) => {
+      const matchingPattern = (patterns as (SecretMeta | undefined)[]).reduce(
+        secretPatternMatcher(s),
+        undefined
+      );
+      if (!matchingPattern) {
+        a.unMatchedSecrets.push(s);
+      } else {
+        a.matchedPatterns.add(
+          `${matchingPattern.namespace}/${matchingPattern.name}`
+        );
+      }
+      return a;
+    },
+    {unMatchedSecrets: [] as SecretMeta[], matchedPatterns: new Set<string>()}
   );
+};
 
 export const checkSecrets = (
   docs: YAML.Document[],
@@ -130,26 +161,23 @@ export const checkSecrets = (
   logger?.log(
     'Found secrets: ' + secrets.map(s => s.namespace + '/' + s.name).join(', ')
   );
+  const {unMatchedSecrets, matchedPatterns} = findUnmatchedSecrets(
+    secrets,
+    allowedSecrets
+  );
   logger?.log(
-    "Didn't find allowed secrets: " +
-      disjunctiveIntersectSecrets(allowedSecrets, secrets)
+    "Didn't match any secrets with: " +
+      allowedSecrets
         .map(s => s.namespace + '/' + s.name)
+        .filter(s => !matchedPatterns.has(s))
         .join(', ')
   );
 
-  const invalidSecrets = disjunctiveIntersectSecrets(secrets, allowedSecrets);
-  if (invalidSecrets.length > 0) {
+  if (unMatchedSecrets.length > 0) {
     throw new Error(
-      `Invalid secrets: ${invalidSecrets
+      `Invalid secrets: ${unMatchedSecrets
         .map(s => s.namespace + '/' + s.name)
         .join(', ')}`
-    );
-  }
-  if (secrets.length > allowedSecrets.length) {
-    throw new Error(
-      `Found ${secrets.length} secrets (${secrets.map(
-        s => s.namespace + '/' + s.name
-      )}) but only ${allowedSecrets.length} are allowed`
     );
   }
 };
