@@ -26818,6 +26818,7 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             core.setFailed(toReport);
         }
         else {
+            console.error(toReport);
             process.exit(1);
         }
     }
