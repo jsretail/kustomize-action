@@ -61,6 +61,7 @@ const main = async () => {
     if (isAction) {
       core.setFailed(toReport);
     } else {
+      console.error(toReport);
       process.exit(1);
     }
   }
@@ -91,7 +92,10 @@ const getYaml = async (settings: Settings, logger: Logger) => {
   const {docs: resources, warnings} = ((await section(
     'Running kustomize',
     async () => {
-      return await kustomize(settings, logger);
+      return await kustomize(
+        settings,
+        logger
+      );
     }
   )) as unknown) as {docs: YAML.Document[]; warnings: string[]};
 

@@ -39,7 +39,7 @@ jobs:
         name: Checkout
       - name: build-environment
         id: build_environment
-        uses: ./ #devjoes/kustomize-action@v0.0.2
+        uses: ./ #devjoes/kustomize-action
         with:
           kustomize-path: $INPUT_PATH
           output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"yaml"},{"type":"FileOutputAction","createDirIfMissing":true,"fileOpenFlags":"w","dontOutputIfErrored":true,"fileName":"/tmp/tmp_${GITHUB_RUN_ID}/main.yaml"}]'
@@ -49,7 +49,7 @@ jobs:
       - name: test alongside other envs
         id: integrate
         if: success() && steps.build_environment.outcome == 'success'
-        uses: ./ #devjoes/kustomize-action@v0.0.2
+        uses: ./ #devjoes/kustomize-action
         with:
           kustomize-path: /tmp/tmp_${GITHUB_RUN_ID}/
           output-actions: '[{"type":"LoggerOutputAction","logErrors":true,"logYaml":false},{"type":"VariableOutputAction","outputVariableName":"INTEGRATED_YAML","errorsVariableName":"ERRORS"}]'

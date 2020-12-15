@@ -1,5 +1,5 @@
 {
-  "name": "retail-k8s-action",
+  "name": "kustomize-action",
   "version": "1.0.0",
   "description": "",
   "main": "./src/index.ts",
@@ -15,15 +15,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JSainsburyPLC/retail-k8s-action.git"
+    "url": "git+https://github.com/JSainsburyPLC/kustomize-action.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/JSainsburyPLC/retail-k8s-action/issues"
+    "url": "https://github.com/JSainsburyPLC/kustomize-action/issues"
   },
-  "homepage": "https://github.com/JSainsburyPLC/retail-k8s-action#readme",
+  "homepage": "https://github.com/JSainsburyPLC/kustomize-action#readme",
   "dependencies": {
     "@actions/artifact": "^0.4.1",
     "@actions/core": "^1.2.6",
