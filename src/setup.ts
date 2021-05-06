@@ -50,6 +50,7 @@ export type Settings = {
   requiredBins: string[];
   kustomizeArgs: string;
   validateWithKubeVal: boolean;
+  kubevalKubernetesVersion?: string;
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
 };
@@ -121,6 +122,10 @@ export const getSettings = (isAction: boolean): Settings => {
     'validate-with-kubeval',
     'VALIDATE_WITH_KUBEVAL'
   );
+  const kubevalKubernetesVersion = getSetting(
+    'kubeval-kubernetes-version',
+    'KUBEVAL_KUBERNETES_VERSION'
+  );
   const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
 
   const workspaceDir = getWorkspaceRoot();
@@ -156,6 +161,7 @@ export const getSettings = (isAction: boolean): Settings => {
     kustomizeArgs: resolveEnvVars(kustomizeArgs || defaultKustomizeArgs),
     validateWithKubeVal:
       resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
+    kubevalKubernetesVersion: resolveEnvVars(kubevalKubernetesVersion || ''),
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
     ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined

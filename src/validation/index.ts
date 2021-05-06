@@ -11,12 +11,23 @@ const runKubeVal = (
   path: string,
   port: number,
   logger: Logger,
-  kubeValBin?: string
+  kubeValBin?: string,
+  kubernetesVersion?: string
 ) =>
   new Promise<{stdOut: string; stdErr: string}>((res, rej) => {
+
+    const kubeValArgs = [
+      '--strict',
+      '--schema-location', 'http://localhost:' + port,
+      path]
+
+    if (kubernetesVersion) {
+      kubeValArgs.push('--kubernetes-version', kubernetesVersion)
+    }
+
     execFile(
       kubeValBin || 'kubeval',
-      ['--strict', '--schema-location', 'http://localhost:' + port, path],
+      kubeValArgs,
       (err, stdOut, stdErr) => {
         logger.log(stdOut);
         if (stdErr && stdErr.length) {
@@ -39,7 +50,8 @@ aggregateCount(text
 const main = async (
   yaml: string,
   logger: Logger,
-  kubeValBin?: string
+  kubeValBin?: string,
+  kubernetesVersion?: string
 ): Promise<string[]> => {
   const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
   const stop = await server.start(port);
@@ -47,7 +59,7 @@ const main = async (
   await fs.promises.writeFile(tmpYaml, yaml);
   let retVal;
   try {
-    retVal = await runKubeVal(tmpYaml, port, logger, kubeValBin);
+    retVal = await runKubeVal(tmpYaml, port, logger, kubeValBin, kubernetesVersion);
   } catch (errData) {
     if (errData instanceof Error) {
       logger.warn(errData);
