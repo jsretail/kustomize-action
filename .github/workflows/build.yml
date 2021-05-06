@@ -5,7 +5,7 @@ on:
     
 jobs:
   build:
-    runs-on: node12
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - run: npm install
