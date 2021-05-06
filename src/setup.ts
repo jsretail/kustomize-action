@@ -189,4 +189,4 @@ export const validateSettings = (settings: Settings) =>
     ),
     ...(settings.extraResources || []).map(statFile)
   ]);
-export const defaultKustomizeArgs = '--enable_alpha_plugins';
+export const defaultKustomizeArgs = '--enable-alpha-plugins';
