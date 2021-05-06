@@ -61,6 +61,36 @@ spec:
   resourceID: /subscriptions/4e8f72a4-b6ba-4028-8635-7f6089f4e48a/resourceGroups/rg-test/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-identity
   type: 0`;
 
+const oldDeploymentSpec = `
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: foo
+  namespace: bar
+  labels:
+    resource-type: application
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      resource-type: application
+  template:
+    metadata:
+      labels:
+        resource-type: application
+    spec:
+      containers:
+        - name: app
+          image: 'nginx'
+          resources:
+            limits:
+              cpu: '2'
+              memory: 2G
+            requests:
+              cpu: '1'
+              memory: 1G
+`
+
 
   let tmpDir: string, kPath: string | undefined;
   const cleanup: (() => void)[] = [];
@@ -120,6 +150,30 @@ spec:
     expect(errors).toHaveLength(3);
     expect(loggerErrors).toHaveLength(1);
   });
+  
+  test('Passes with old spec with valid kubernetes version', async () => {
+    const errors = await validate(
+      oldDeploymentSpec,
+      logger,
+      kPath,
+      '1.15.0'
+    );
+
+    expect(errors).toHaveLength(0)
+    expect(loggerErrors).toHaveLength(0)
+  })
+  
+  test('Fails with old spec with newer kubernetes version', async () => {
+    const errors = await validate(
+      oldDeploymentSpec,
+      logger,
+      kPath,
+      '1.20.0'
+    );
+
+    expect(errors).toHaveLength(1)
+    expect(loggerErrors).toHaveLength(1)
+  })
 
 const downloadKubevalBin = (dir: string) => {
   const url =
