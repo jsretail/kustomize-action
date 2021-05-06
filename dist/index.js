@@ -27423,6 +27423,7 @@ const getSettings = (isAction) => {
     const requiredBins = getSetting('required-bins', 'REQUIRED_BINS');
     const verbose = getSetting('verbose', 'VERBOSE');
     const validateWithKubeVal = getSetting('validate-with-kubeval', 'VALIDATE_WITH_KUBEVAL');
+    const kubevalKubernetesVersion = getSetting('kubeval-kubernetes-version', 'KUBEVAL_KUBERNETES_VERSION');
     const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
     const workspaceDir = utils_1.getWorkspaceRoot();
     const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(workspaceDir, p);
@@ -27454,6 +27455,7 @@ const getSettings = (isAction) => {
             : ['kustomize', 'kubeval', 'helm'],
         kustomizeArgs: utils_1.resolveEnvVars(kustomizeArgs || exports.defaultKustomizeArgs),
         validateWithKubeVal: utils_1.resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
+        kubevalKubernetesVersion: utils_1.resolveEnvVars(kubevalKubernetesVersion || ''),
         reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
         ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined
     };
@@ -27478,7 +27480,7 @@ const validateSettings = (settings) => Promise.all([
     ...(settings.extraResources || []).map(statFile)
 ]);
 exports.validateSettings = validateSettings;
-exports.defaultKustomizeArgs = '--enable_alpha_plugins';
+exports.defaultKustomizeArgs = '--enable-alpha-plugins';
 
 
 /***/ }),
@@ -27615,8 +27617,16 @@ const fs_1 = __importDefault(__webpack_require__(5747));
 const server_1 = __importDefault(__webpack_require__(2925));
 const utils_1 = __webpack_require__(1314);
 const osTmpDir = process.env['RUNNER_TEMP'] || tmp_1.default.tmpdir;
-const runKubeVal = (path, port, logger, kubeValBin) => new Promise((res, rej) => {
-    child_process_1.execFile(kubeValBin || 'kubeval', ['--strict', '--schema-location', 'http://localhost:' + port, path], (err, stdOut, stdErr) => {
+const runKubeVal = (path, port, logger, kubeValBin, kubernetesVersion) => new Promise((res, rej) => {
+    const kubeValArgs = [
+        '--strict',
+        '--schema-location', 'http://localhost:' + port,
+        path
+    ];
+    if (kubernetesVersion) {
+        kubeValArgs.push('--kubernetes-version', kubernetesVersion);
+    }
+    child_process_1.execFile(kubeValBin || 'kubeval', kubeValArgs, (err, stdOut, stdErr) => {
         logger.log(stdOut);
         if (stdErr && stdErr.length) {
             logger.warn(stdErr);
@@ -27631,14 +27641,14 @@ const getErrors = (text) => utils_1.aggregateCount(text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
     .filter(err => err && err.length > 0));
-const main = (yaml, logger, kubeValBin) => __awaiter(void 0, void 0, void 0, function* () {
+const main = (yaml, logger, kubeValBin, kubernetesVersion) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
     const stop = yield server_1.default.start(port);
     const { name: tmpYaml } = tmp_1.default.fileSync({ tmpdir: osTmpDir });
     yield fs_1.default.promises.writeFile(tmpYaml, yaml);
     let retVal;
     try {
-        retVal = yield runKubeVal(tmpYaml, port, logger, kubeValBin);
+        retVal = yield runKubeVal(tmpYaml, port, logger, kubeValBin, kubernetesVersion);
     }
     catch (errData) {
         if (errData instanceof Error) {
