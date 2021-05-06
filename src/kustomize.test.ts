@@ -6,10 +6,12 @@ import YAML from 'yaml';
 import kustomize from './kustomize';
 import {getBinPath} from './utils';
 import {buildTestLogger, Logger} from './logger';
-import {createKustomizeFolder, defaultKustomizeArgs, Settings} from './setup';
+import {createKustomizeFolder, Settings} from './setup';
+
+const defaultKustomizeArgs = '--enable-alpha-plugins'
 
 let tmpDir: string, kPath: string | undefined;
-let cleanup: (() => void)[] = [];
+const cleanup: (() => void)[] = [];
 const cleanUpGetName = (toCleanup: tmp.FileResult | tmp.DirResult): string => {
   cleanup.push(toCleanup.removeCallback);
   return toCleanup.name;
