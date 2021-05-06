@@ -27480,7 +27480,7 @@ const validateSettings = (settings) => Promise.all([
     ...(settings.extraResources || []).map(statFile)
 ]);
 exports.validateSettings = validateSettings;
-exports.defaultKustomizeArgs = '--enable-alpha-plugins';
+exports.defaultKustomizeArgs = '--enable_alpha_plugins';
 
 
 /***/ }),
