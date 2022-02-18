@@ -5,7 +5,7 @@ const sealedSecrets = require("./sealedSecrets");
 const networkPolicy = require("./networkPolicy");
 const customResourceDefinition = require("./customResourceDefinition");
 const istio = require("./istio");
-const globalnetworkpolicy = require("./globalnetworkpolicy");
+const globalnetworkpolicy = require("./globalNetworkPolicy");
 
 const schemas = {
   ...azureIdentity,
