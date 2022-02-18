@@ -32,6 +32,7 @@ inputs:
   validate-with-kubeval:
     description: "Validates the YAML against schemas with kubeval"
     required: false
+    default: true
   kubeval-kubernetes-version:
     description: "The version of kubernetes to validate with"
     required: false
