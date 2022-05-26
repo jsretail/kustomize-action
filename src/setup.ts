@@ -53,6 +53,7 @@ export type Settings = {
   kubevalKubernetesVersion?: string;
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
+  kubevalSchemaLocation?: string
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -126,6 +127,12 @@ export const getSettings = (isAction: boolean): Settings => {
     'kubeval-kubernetes-version',
     'KUBEVAL_KUBERNETES_VERSION'
   );
+
+  const kubevalSchemaLocation = getSetting(
+    'kubeval-schema-location',
+    'KUBEVAL_SCHEMA_LOCATION'
+  )
+
   const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
 
   const workspaceDir = getWorkspaceRoot();
@@ -162,6 +169,7 @@ export const getSettings = (isAction: boolean): Settings => {
     validateWithKubeVal:
       resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
     kubevalKubernetesVersion: resolveEnvVars(kubevalKubernetesVersion || ''),
+    kubevalSchemaLocation: resolveEnvVars(kubevalSchemaLocation || undefined),
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
     ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined

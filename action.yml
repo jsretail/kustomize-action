@@ -36,6 +36,9 @@ inputs:
   kubeval-kubernetes-version:
     description: "The version of kubernetes to validate with"
     required: false
+  kubeval-schema-location:
+    description: Schema location for kubeval to use.
+    required: false
   kustomize-args:
     description: "Arguments to run kustomize with"
     required: false

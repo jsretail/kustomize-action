@@ -118,13 +118,13 @@ spec:
     }
   });
   test('Passes on valid deployment definition', async () => {
-    const errors = await validate(deployment, logger, kPath);
+    const errors = await validate(deployment, logger, { kubeValBin: kPath });
     expect(errors).toHaveLength(0);
     expect(loggerErrors).toHaveLength(0);
   });
 
   test('Passes on valid CRD definition', async () => {
-    const errors = await validate(azureIdentity, logger, kPath);
+    const errors = await validate(azureIdentity, logger, { kubeValBin: kPath });
     expect(errors).toHaveLength(0);
     expect(loggerErrors).toHaveLength(0);
   });
@@ -132,7 +132,9 @@ spec:
     const errors = await validate(
       deployment.replace('metadata', 'sandwiches'),
       logger,
-      kPath
+      {
+        kubeValBin: kPath
+      }
     );
     expect(errors).toHaveLength(1);
     expect(loggerErrors).toHaveLength(1);
@@ -145,7 +147,7 @@ spec:
         .replace('resourceID', 'lettuce')
         .replace('type: 0', 'type: tomato'),
       logger,
-      kPath
+      { kubeValBin: kPath }
     );
     expect(errors).toHaveLength(3);
     expect(loggerErrors).toHaveLength(1);
@@ -155,8 +157,10 @@ spec:
     const errors = await validate(
       oldDeploymentSpec,
       logger,
-      kPath,
-      '1.15.0'
+      {
+        kubeValBin: kPath,
+        kubernetesVersion: '1.15.0'
+      }
     );
 
     expect(errors).toHaveLength(0)
@@ -167,8 +171,11 @@ spec:
     const errors = await validate(
       oldDeploymentSpec,
       logger,
-      kPath,
-      '1.20.0'
+      {
+        kubeValBin: kPath,
+        kubernetesVersion:'1.20.0',
+        schemaLocation: 'https://t-hunter.co.uk'
+      }
     );
 
     expect(errors).toHaveLength(1)
