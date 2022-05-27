@@ -174,7 +174,7 @@ spec:
       {
         kubeValBin: kPath,
         kubernetesVersion:'1.20.0',
-        schemaLocation: 'https://t-hunter.co.uk'
+        schemaLocation: 'https://raw.githubusercontent.com/jsretail/kubernetes-schema/main'
       }
     );
 
