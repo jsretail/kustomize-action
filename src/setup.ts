@@ -53,7 +53,7 @@ export type Settings = {
   kubevalKubernetesVersion?: string;
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
-  kubevalSchemaLocation?: string
+  kubevalSchemaLocation?: string;
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -131,7 +131,7 @@ export const getSettings = (isAction: boolean): Settings => {
   const kubevalSchemaLocation = getSetting(
     'kubeval-schema-location',
     'KUBEVAL_SCHEMA_LOCATION'
-  )
+  );
 
   const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
 

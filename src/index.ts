@@ -165,13 +165,14 @@ const getYaml = async (settings: Settings, logger: Logger) => {
   );
 
   if (settings.validateWithKubeVal) {
-    await section('Validating YAML', async () => errors.push(...(await validateYaml(
-      yaml,
-      logger,
-      {
-        schemaLocation: settings.kubevalSchemaLocation,
-        kubernetesVersion: settings.kubevalKubernetesVersion
-      }))));
+    await section('Validating YAML', async () =>
+      errors.push(
+        ...(await validateYaml(yaml, logger, {
+          schemaLocation: settings.kubevalSchemaLocation,
+          kubernetesVersion: settings.kubevalKubernetesVersion
+        }))
+      )
+    );
   }
   if (settings.customValidation.length) {
     await section('Running customValidation tests', async () => {

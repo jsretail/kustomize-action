@@ -8,7 +8,7 @@ import {getBinPath} from './utils';
 import {buildTestLogger, Logger} from './logger';
 import {createKustomizeFolder, Settings} from './setup';
 
-const defaultKustomizeArgs = '--enable-alpha-plugins'
+const defaultKustomizeArgs = '--enable-alpha-plugins';
 
 let tmpDir: string, kPath: string | undefined;
 const cleanup: (() => void)[] = [];
