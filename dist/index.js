@@ -26571,7 +26571,7 @@ const URL = __webpack_require__(8835).URL; // https://stackoverflow.com/question
 // This basically serves our own schemas or proxies calls to https://kubernetesjsonschema.dev/
 // We have to do this cos github.com/instrumenta/kubernetes-json-schema is 4.2GB!
 
-const schemaSite = 'https://kubernetesjsonschema.dev';
+const defaultSchemaSite = 'https://kubernetesjsonschema.dev';
 
 const sendError = res => err => {
   console.warn(err);
@@ -26581,8 +26581,8 @@ const sendError = res => err => {
 
 const cache = {};
 
-const requestSchema = (reqPath, res) => {
-  const url = new URL(schemaSite + reqPath);
+const requestSchema = (reqPath, res, opts = {}) => {
+  const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
   const client = https.request(url, msg => {
     res.writeHead(msg.statusCode, msg.headers);
     let data = '';
@@ -26618,7 +26618,7 @@ const requestSchema = (reqPath, res) => {
   };
 };
 
-const schemaCache = next => (reqPath, res) => {
+const schemaCache = next => (reqPath, res, opts = {}) => {
   const cached = cache[reqPath];
   if (cached && cached.code !== 200) {
     res.writeHead(cached.code);
@@ -26630,15 +26630,15 @@ const schemaCache = next => (reqPath, res) => {
     res.end(JSON.stringify(cached.data));
     return;
   }
-  next(reqPath, res);
+  next(reqPath, res, opts);
 };
 
-const codeSchema = next => (reqPath, res) => {
+const codeSchema = next => (reqPath, res, opts = {}) => {
   const rx = /^\/?[^\/]+/;
   const key = reqPath.toLowerCase();
   const schema = schemas[key] || schemas[key.replace(rx, '')];
   if (!schema) {
-    next(reqPath, res);
+    next(reqPath, res, opts);
     return;
   }
   res.writeHead(200, 'application/json');
@@ -26647,14 +26647,16 @@ const codeSchema = next => (reqPath, res) => {
 
 const getSchema = codeSchema(schemaCache(requestSchema));
 
-function start(port) {
+function start(port, schemaLocation) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
       server = http.createServer(
         function (req, res) {
           try {
-            getSchema(req.url, res);
+            getSchema(req.url, res, {
+              schemaLocation
+            });
           } catch (err) {
             rej(err);
           }
@@ -27000,7 +27002,10 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         .filter(i => i != undefined));
     if (settings.validateWithKubeVal) {
         yield section('Validating YAML', () => __awaiter(void 0, void 0, void 0, function* () {
-            errors.push(...(yield validation_1.default(yaml, logger)));
+            return errors.push(...(yield validation_1.default(yaml, logger, {
+                schemaLocation: settings.kubevalSchemaLocation,
+                kubernetesVersion: settings.kubevalKubernetesVersion
+            })));
         }));
     }
     if (settings.customValidation.length) {
@@ -27532,6 +27537,7 @@ const getSettings = (isAction) => {
     const verbose = getSetting('verbose', 'VERBOSE');
     const validateWithKubeVal = getSetting('validate-with-kubeval', 'VALIDATE_WITH_KUBEVAL');
     const kubevalKubernetesVersion = getSetting('kubeval-kubernetes-version', 'KUBEVAL_KUBERNETES_VERSION');
+    const kubevalSchemaLocation = getSetting('kubeval-schema-location', 'KUBEVAL_SCHEMA_LOCATION');
     const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
     const workspaceDir = utils_1.getWorkspaceRoot();
     const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(workspaceDir, p);
@@ -27564,6 +27570,7 @@ const getSettings = (isAction) => {
         kustomizeArgs: utils_1.resolveEnvVars(kustomizeArgs || exports.defaultKustomizeArgs),
         validateWithKubeVal: utils_1.resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
         kubevalKubernetesVersion: utils_1.resolveEnvVars(kubevalKubernetesVersion || ''),
+        kubevalSchemaLocation: utils_1.resolveEnvVars(kubevalSchemaLocation || undefined),
         reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
         ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined
     };
@@ -27749,9 +27756,9 @@ const getErrors = (text) => utils_1.aggregateCount(text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
     .filter(err => err && err.length > 0));
-const main = (yaml, logger, kubeValBin, kubernetesVersion) => __awaiter(void 0, void 0, void 0, function* () {
+const main = (yaml, logger, { kubeValBin, kubernetesVersion, schemaLocation } = {}) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
-    const stop = yield server_1.default.start(port);
+    const stop = yield server_1.default.start(port, schemaLocation);
     const { name: tmpYaml } = tmp_1.default.fileSync({ tmpdir: osTmpDir });
     yield fs_1.default.promises.writeFile(tmpYaml, yaml);
     let retVal;

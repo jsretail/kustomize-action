@@ -6,7 +6,7 @@ const URL = require('url').URL; // https://stackoverflow.com/questions/52566578/
 // This basically serves our own schemas or proxies calls to https://kubernetesjsonschema.dev/
 // We have to do this cos github.com/instrumenta/kubernetes-json-schema is 4.2GB!
 
-const schemaSite = 'https://kubernetesjsonschema.dev';
+const defaultSchemaSite = 'https://kubernetesjsonschema.dev';
 
 const sendError = res => err => {
   console.warn(err);
@@ -16,8 +16,8 @@ const sendError = res => err => {
 
 const cache = {};
 
-const requestSchema = (reqPath, res) => {
-  const url = new URL(schemaSite + reqPath);
+const requestSchema = (reqPath, res, opts = {}) => {
+  const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
   const client = https.request(url, msg => {
     res.writeHead(msg.statusCode, msg.headers);
     let data = '';
@@ -53,7 +53,7 @@ const requestSchema = (reqPath, res) => {
   };
 };
 
-const schemaCache = next => (reqPath, res) => {
+const schemaCache = next => (reqPath, res, opts = {}) => {
   const cached = cache[reqPath];
   if (cached && cached.code !== 200) {
     res.writeHead(cached.code);
@@ -65,15 +65,15 @@ const schemaCache = next => (reqPath, res) => {
     res.end(JSON.stringify(cached.data));
     return;
   }
-  next(reqPath, res);
+  next(reqPath, res, opts);
 };
 
-const codeSchema = next => (reqPath, res) => {
+const codeSchema = next => (reqPath, res, opts = {}) => {
   const rx = /^\/?[^\/]+/;
   const key = reqPath.toLowerCase();
   const schema = schemas[key] || schemas[key.replace(rx, '')];
   if (!schema) {
-    next(reqPath, res);
+    next(reqPath, res, opts);
     return;
   }
   res.writeHead(200, 'application/json');
@@ -82,14 +82,16 @@ const codeSchema = next => (reqPath, res) => {
 
 const getSchema = codeSchema(schemaCache(requestSchema));
 
-function start(port) {
+function start(port, schemaLocation) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
       server = http.createServer(
         function (req, res) {
           try {
-            getSchema(req.url, res);
+            getSchema(req.url, res, {
+              schemaLocation
+            });
           } catch (err) {
             rej(err);
           }
