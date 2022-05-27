@@ -56,5 +56,5 @@ outputs:
   errors:
     description: 'Any errors (if VariableOutputAction.errorsVariableName is set)'
 runs:
-  using: 'node14'
+  using: 'node16'
   main: 'dist/index.js'
