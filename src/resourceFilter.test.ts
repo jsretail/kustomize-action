@@ -19,25 +19,25 @@ describe('Given annotation filters', () => {
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter1
+    jsretail.github.io/kustomize-action/filter: filter1
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter2
+    jsretail.github.io/kustomize-action/filter: filter2
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter3
+    jsretail.github.io/kustomize-action/filter: filter3
 `),
       expectedYaml: YAML.parseAllDocuments(`
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter2
+    jsretail.github.io/kustomize-action/filter: filter2
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter3`)
+    jsretail.github.io/kustomize-action/filter: filter3`)
     },
     {
       givenFilter: ['filter1', 'filter2'],
@@ -45,21 +45,21 @@ metadata:
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter1
+    jsretail.github.io/kustomize-action/filter: filter1
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter2
+    jsretail.github.io/kustomize-action/filter: filter2
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter3
+    jsretail.github.io/kustomize-action/filter: filter3
 `),
       expectedYaml: YAML.parseAllDocuments(`
 ---
 metadata:
   annotations:
-    sainsburys.co.uk/filter: filter3`)
+    jsretail.github.io/kustomize-action/filter: filter3`)
     }
   ])(
     'Matching documents should not pass through',

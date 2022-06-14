@@ -12,7 +12,7 @@ export default (
 ): YAML.Document[] =>
   docs.filter(d => {
     
-    const filterAnnotation = d.get('metadata')?.get('annotations')?.get('sainsburys.co.uk/filter')
+    const filterAnnotation = d.get('metadata')?.get('annotations')?.get('jsretail.github.io/kustomize-action/filter')
     const kind = d.get('kind') || ""
     const apiVersion = d.get('apiVersion') || ""
 
