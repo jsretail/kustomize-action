@@ -26970,7 +26970,7 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         var _a, _b;
         return resourceFilter_1.default(docs, settings.verbose ? logger : undefined, {
             filterExcludeAnnotations: (_a = settings.filterExcludeAnnotations) === null || _a === void 0 ? void 0 : _a.split(','),
-            filterExcludeResources: (_b = settings.filterExcludeResource) === null || _b === void 0 ? void 0 : _b.split(',')
+            filterExcludeResources: (_b = settings.filterExcludeResources) === null || _b === void 0 ? void 0 : _b.split(',')
         });
     })));
     const cleanedDocs = (yield section('Cleaning up YAML', () => __awaiter(void 0, void 0, void 0, function* () {
@@ -27608,7 +27608,7 @@ const getSettings = (isAction) => {
         reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
         ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined,
         filterExcludeAnnotations: utils_1.resolveEnvVars(filterExcludeAnnotations || undefined),
-        filterExcludeResource: utils_1.resolveEnvVars(filterExcludeResources || undefined)
+        filterExcludeResources: utils_1.resolveEnvVars(filterExcludeResources || undefined)
     };
 };
 exports.getSettings = getSettings;
