@@ -27433,7 +27433,7 @@ const utils_1 = __webpack_require__(1314);
 exports.default = (docs, logger = undefined, { filterExcludeAnnotations = [], filterExcludeResources = [] }) => docs.filter(d => {
     var _a, _b;
     const filterAnnotation = (_b = (_a = d
-        .get('metadata')) === null || _a === void 0 ? void 0 : _a.get('annotations')) === null || _b === void 0 ? void 0 : _b.get('sainsburys.co.uk/filter');
+        .get('metadata')) === null || _a === void 0 ? void 0 : _a.get('annotations')) === null || _b === void 0 ? void 0 : _b.get('jsretail.github.io/kustomize-action/filter');
     const kind = d.get('kind') || '';
     const apiVersion = d.get('apiVersion') || '';
     const toRemove = filterExcludeAnnotations.includes(filterAnnotation) ||
