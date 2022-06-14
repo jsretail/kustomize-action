@@ -51,11 +51,11 @@ inputs:
     description: "Regex to filter out warnings and errors, e.g. '/ignore/i'"
     required: false
   filter-exclude-resources:
-    description: "Resources to exclude from the output file."
+    description: "Resources to exclude from the output file. For example apps/v1/Deployment or for multiple apps/v1/Deployment,apps/v1/DaemonSet"
     required: false
     default: ''
   filter-exclude-annotations:
-    description: "Resources to exclude from the output file."
+    description: "Resources to exclude by the annotation sainsburys.co.uk/filter. Comma seperated for multiple values."
     required: false
     default: ''
 outputs:
