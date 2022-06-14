@@ -20,6 +20,7 @@ import {runActions} from './outputs';
 import {getLabel, makeBox} from './utils';
 import {Type} from 'yaml/util';
 import {resolve} from 'path';
+import resourceFilter from './resourceFilter';
 
 const main = async () => {
   const isAction = !!process.env.GITHUB_EVENT_NAME;
@@ -113,8 +114,15 @@ const getYaml = async (settings: Settings, logger: Logger) => {
     }
   )) as unknown) as YAML.Document[];
 
+  const filteredDocs = ((await section('Filtering Documents', async () => {
+    return resourceFilter(docs, settings.verbose ? logger : undefined, {
+      filterExcludeAnnotations: settings.filterExcludeAnnotations?.split(','),
+      filterExcludeResources: settings.filterExcludeResource?.split(',')
+    });
+  }) as unknown) as YAML.Document[]);
+
   const cleanedDocs = ((await section('Cleaning up YAML', async () => {
-    const cleaned = docs.reduce(
+    const cleaned = filteredDocs.reduce(
       (a, d) => {
         const {doc, modified} = cleanUpYaml(
           d,
