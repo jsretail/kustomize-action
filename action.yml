@@ -50,6 +50,12 @@ inputs:
   ignore-errors-regex:
     description: "Regex to filter out warnings and errors, e.g. '/ignore/i'"
     required: false
+  filter-exclude-resources:
+    description: "Resources to exclude from the output file."
+    required: false
+  filter-exclude-annotations:
+    description: "Resources to exclude from the output file."
+    required: false
 outputs:
   yaml:
     description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'
