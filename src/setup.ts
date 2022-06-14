@@ -55,7 +55,7 @@ export type Settings = {
   ignoreWarningsErrorsRegex: RegExp | undefined;
   kubevalSchemaLocation?: string;
   filterExcludeAnnotations?: string;
-  filterExcludeResource?: string; 
+  filterExcludeResources?: string; 
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -186,7 +186,7 @@ export const getSettings = (isAction: boolean): Settings => {
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
     ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined,
     filterExcludeAnnotations: resolveEnvVars(filterExcludeAnnotations || undefined),
-    filterExcludeResource: resolveEnvVars(filterExcludeResources || undefined)
+    filterExcludeResources: resolveEnvVars(filterExcludeResources || undefined)
   };
 };
 

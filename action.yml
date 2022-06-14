@@ -53,9 +53,11 @@ inputs:
   filter-exclude-resources:
     description: "Resources to exclude from the output file."
     required: false
+    default: ''
   filter-exclude-annotations:
     description: "Resources to exclude from the output file."
     required: false
+    default: ''
 outputs:
   yaml:
     description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'

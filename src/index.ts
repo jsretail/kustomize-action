@@ -117,7 +117,7 @@ const getYaml = async (settings: Settings, logger: Logger) => {
   const filteredDocs = ((await section('Filtering Documents', async () => {
     return resourceFilter(docs, settings.verbose ? logger : undefined, {
       filterExcludeAnnotations: settings.filterExcludeAnnotations?.split(','),
-      filterExcludeResources: settings.filterExcludeResource?.split(',')
+      filterExcludeResources: settings.filterExcludeResources?.split(',')
     });
   }) as unknown) as YAML.Document[]);
 
