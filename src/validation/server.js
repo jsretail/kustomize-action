@@ -18,19 +18,30 @@ const cache = {};
 
 const requestSchema = (reqPath, res, opts = {}) => {
   const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
-  const client = https.request({...url, headers: {
-    ...(opts.githubToken ? {Authorization: `token ${opts.githubToken}`} : {})
-  }}, msg => {
-    res.writeHead(msg.statusCode, msg.headers);
-    let data = '';
-    msg.on('data', curData => {
-      data += curData;
-    });
-    msg.on('end', () => {
-      addToCache(data, msg);
-      res.end(data);
-    });
-  });
+  const client = https.request(
+    {
+      host: url.host,
+      path: url.pathname,
+      port: url.port,
+      protocol: url.protocol,
+      headers: {
+        ...(opts.githubToken
+          ? {Authorization: `token ${opts.githubToken}`}
+          : {})
+      }
+    },
+    msg => {
+      res.writeHead(msg.statusCode, msg.headers);
+      let data = '';
+      msg.on('data', curData => {
+        data += curData;
+      });
+      msg.on('end', () => {
+        addToCache(data, msg);
+        res.end(data);
+      });
+    }
+  );
   client.on('error', sendError(res));
   client.end();
   const addToCache = (data, msg) => {
@@ -88,18 +99,16 @@ function start(port, schemaLocation, githubToken) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
-      server = http.createServer(
-        function (req, res) {
-          try {
-            getSchema(req.url, res, {
-              schemaLocation,
-              githubToken
-            });
-          } catch (err) {
-            rej(err);
-          }
+      server = http.createServer(function (req, res) {
+        try {
+          getSchema(req.url, res, {
+            schemaLocation,
+            githubToken
+          });
+        } catch (err) {
+          rej(err);
         }
-      );
+      });
       server.listen(port);
       started(
         () =>
