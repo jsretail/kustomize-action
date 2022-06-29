@@ -26582,7 +26582,7 @@ const sendError = res => err => {
 const cache = {};
 
 const retryOnError = (reqPath, res, opts = {}, fail) => err => {
-  if (opts.attempts || 0 > 10) {
+  if (opts.attempts || 0 > 5) {
     fail(err)
     return
   }
@@ -26631,10 +26631,6 @@ const requestSchema = (reqPath, res, opts = {}) => {
     if (roundedStatusCode != 200) {
       console.warn(msg.statusCode + '\t' + url.toString());
       // cache[reqPath] = { code: roundedStatusCode };
-      return;
-    }
-    if (msg.headers['content-type'] != 'application/json') {
-      console.warn('Cant cache ' + msg.headers['content-type']);
       return;
     }
     let json;
@@ -26995,13 +26991,13 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
     const docs = (yield section('Removing superfluous kustomize resources', () => __awaiter(void 0, void 0, void 0, function* () {
         return cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
     })));
-    const filteredDocs = (yield section('Filtering Documents', () => __awaiter(void 0, void 0, void 0, function* () {
+    const filteredDocs = yield section('Filtering Documents', () => __awaiter(void 0, void 0, void 0, function* () {
         var _a, _b;
         return resourceFilter_1.default(docs, settings.verbose ? logger : undefined, {
             filterExcludeAnnotations: (_a = settings.filterExcludeAnnotations) === null || _a === void 0 ? void 0 : _a.split(','),
             filterExcludeResources: (_b = settings.filterExcludeResources) === null || _b === void 0 ? void 0 : _b.split(',')
         });
-    })));
+    }));
     const cleanedDocs = (yield section('Cleaning up YAML', () => __awaiter(void 0, void 0, void 0, function* () {
         const cleaned = filteredDocs.reduce((a, d) => {
             const { doc, modified } = cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined);
@@ -27462,12 +27458,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const utils_1 = __webpack_require__(1314);
 exports.default = (docs, logger = undefined, { filterExcludeAnnotations = [], filterExcludeResources = [] }) => docs.filter(d => {
     var _a, _b;
-    const filterAnnotation = (_b = (_a = d
-        .get('metadata')) === null || _a === void 0 ? void 0 : _a.get('annotations')) === null || _b === void 0 ? void 0 : _b.get('jsretail.github.io/kustomize-action/filter');
-    const kind = d.get('kind') || '';
-    const apiVersion = d.get('apiVersion') || '';
-    const toRemove = filterExcludeAnnotations.includes(filterAnnotation) ||
-        filterExcludeResources.includes(`${apiVersion}/${kind}`);
+    const filterAnnotation = (_b = (_a = d.get('metadata')) === null || _a === void 0 ? void 0 : _a.get('annotations')) === null || _b === void 0 ? void 0 : _b.get('jsretail.github.io/kustomize-action/filter');
+    const kind = d.get('kind') || "";
+    const apiVersion = d.get('apiVersion') || "";
+    const toRemove = filterExcludeAnnotations.includes(filterAnnotation)
+        || filterExcludeResources.includes(`${apiVersion}/${kind}`);
     if (toRemove) {
         logger === null || logger === void 0 ? void 0 : logger.log(`removing ${utils_1.getLabel(d)}`);
     }
