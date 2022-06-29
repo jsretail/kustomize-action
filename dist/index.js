@@ -26581,6 +26581,20 @@ const sendError = res => err => {
 
 const cache = {};
 
+const retryOnError = (reqPath, res, opts = {}, fail) => err => {
+  if (opts.attempts || 0 > 10) {
+    fail(err)
+    return
+  }
+
+  if (err.code == "ETIMEDOUT") {
+    const wait = ((opts.attempts || 0) + 1) * 1000;
+    console.warn(`Request timed out attempting again in ${wait / 1000} seconds ${reqPath}`)
+    setTimeout(() => requestSchema(reqPath, res, { ...opts, attempts: (opts.attempts || 0) + 1 }), wait)
+    return
+  }
+}
+
 const requestSchema = (reqPath, res, opts = {}) => {
   const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
   const client = https.request(
@@ -26607,7 +26621,7 @@ const requestSchema = (reqPath, res, opts = {}) => {
       });
     }
   );
-  client.on('error', sendError(res));
+  client.on('error', retryOnError(reqPath, res, opts, sendError(res)));
   client.end();
   const addToCache = (data, msg) => {
     const roundedStatusCode = Math.round(msg.statusCode / 100) * 100;
