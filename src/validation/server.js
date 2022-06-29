@@ -107,7 +107,7 @@ const codeSchema = next => (reqPath, res, opts = {}) => {
   res.end(JSON.stringify(schema));
 };
 
-const getSchema = codeSchema(schemaCache(retryOnFailure(requestSchema)));
+const getSchema = codeSchema(schemaCache(requestSchema));
 
 function start(port, schemaLocation, githubToken) {
   return new Promise((started, rej) => {
