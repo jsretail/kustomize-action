@@ -17,7 +17,7 @@ const sendError = res => err => {
 const cache = {};
 
 const retryOnError = (reqPath, res, opts = {}, fail) => err => {
-  if (opts.attempts || 0 > 10) {
+  if (opts.attempts || 0 > 5) {
     fail(err)
     return
   }
@@ -66,10 +66,6 @@ const requestSchema = (reqPath, res, opts = {}) => {
     if (roundedStatusCode != 200) {
       console.warn(msg.statusCode + '\t' + url.toString());
       // cache[reqPath] = { code: roundedStatusCode };
-      return;
-    }
-    if (msg.headers['content-type'] != 'application/json') {
-      console.warn('Cant cache ' + msg.headers['content-type']);
       return;
     }
     let json;
