@@ -28,6 +28,9 @@ const retryOnError = (reqPath, res, opts = {}, fail) => err => {
     setTimeout(() => requestSchema(reqPath, res, { ...opts, attempts: (opts.attempts || 0) + 1 }), wait)
     return
   }
+
+  fail(err)
+  return
 }
 
 const requestSchema = (reqPath, res, opts = {}) => {
