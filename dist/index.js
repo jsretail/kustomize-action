@@ -26583,17 +26583,30 @@ const cache = {};
 
 const requestSchema = (reqPath, res, opts = {}) => {
   const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
-  const client = https.request(url, msg => {
-    res.writeHead(msg.statusCode, msg.headers);
-    let data = '';
-    msg.on('data', curData => {
-      data += curData;
-    });
-    msg.on('end', () => {
-      addToCache(data, msg);
-      res.end(data);
-    });
-  });
+  const client = https.request(
+    {
+      host: url.host,
+      path: url.pathname,
+      port: url.port,
+      protocol: url.protocol,
+      headers: {
+        ...(opts.githubToken
+          ? {Authorization: `token ${opts.githubToken}`}
+          : {})
+      }
+    },
+    msg => {
+      res.writeHead(msg.statusCode, msg.headers);
+      let data = '';
+      msg.on('data', curData => {
+        data += curData;
+      });
+      msg.on('end', () => {
+        addToCache(data, msg);
+        res.end(data);
+      });
+    }
+  );
   client.on('error', sendError(res));
   client.end();
   const addToCache = (data, msg) => {
@@ -26647,21 +26660,20 @@ const codeSchema = next => (reqPath, res, opts = {}) => {
 
 const getSchema = codeSchema(schemaCache(requestSchema));
 
-function start(port, schemaLocation) {
+function start(port, schemaLocation, githubToken) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
-      server = http.createServer(
-        function (req, res) {
-          try {
-            getSchema(req.url, res, {
-              schemaLocation
-            });
-          } catch (err) {
-            rej(err);
-          }
+      server = http.createServer(function (req, res) {
+        try {
+          getSchema(req.url, res, {
+            schemaLocation,
+            githubToken
+          });
+        } catch (err) {
+          rej(err);
         }
-      );
+      });
       server.listen(port);
       started(
         () =>
@@ -27012,7 +27024,8 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
         yield section('Validating YAML', () => __awaiter(void 0, void 0, void 0, function* () {
             return errors.push(...(yield validation_1.default(yaml, logger, {
                 schemaLocation: settings.kubevalSchemaLocation,
-                kubernetesVersion: settings.kubevalKubernetesVersion
+                kubernetesVersion: settings.kubevalKubernetesVersion,
+                githubToken: settings.kubevalGithubToken
             })));
         }));
     }
@@ -27570,6 +27583,7 @@ const getSettings = (isAction) => {
     const validateWithKubeVal = getSetting('validate-with-kubeval', 'VALIDATE_WITH_KUBEVAL');
     const kubevalKubernetesVersion = getSetting('kubeval-kubernetes-version', 'KUBEVAL_KUBERNETES_VERSION');
     const kubevalSchemaLocation = getSetting('kubeval-schema-location', 'KUBEVAL_SCHEMA_LOCATION');
+    const kubevalGithubToken = getSetting('kubeval-github-token', 'KUBEVAL_GITHUB_TOKEN');
     const filterExcludeAnnotations = getSetting('filter-exclude-annotations', 'FILTER_EXCLUDE_ANNOTATIONS');
     const filterExcludeResources = getSetting('filter-exclude-resources', 'FILTER_EXCLUDE_RESOURCES');
     const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
@@ -27604,6 +27618,7 @@ const getSettings = (isAction) => {
         kustomizeArgs: utils_1.resolveEnvVars(kustomizeArgs || exports.defaultKustomizeArgs),
         validateWithKubeVal: utils_1.resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
         kubevalKubernetesVersion: utils_1.resolveEnvVars(kubevalKubernetesVersion || ''),
+        kubevalGithubToken: utils_1.resolveEnvVars(kubevalGithubToken || undefined),
         kubevalSchemaLocation: utils_1.resolveEnvVars(kubevalSchemaLocation || undefined),
         reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
         ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined,
@@ -27792,9 +27807,9 @@ const getErrors = (text) => utils_1.aggregateCount(text
     .split(/\n/g)
     .map(line => (line.match(/^(WARN|ERR)\s/) ? line : undefined))
     .filter(err => err && err.length > 0));
-const main = (yaml, logger, { kubeValBin, kubernetesVersion, schemaLocation } = {}) => __awaiter(void 0, void 0, void 0, function* () {
+const main = (yaml, logger, { kubeValBin, kubernetesVersion, schemaLocation, githubToken } = {}) => __awaiter(void 0, void 0, void 0, function* () {
     const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
-    const stop = yield server_1.default.start(port, schemaLocation);
+    const stop = yield server_1.default.start(port, schemaLocation, githubToken);
     const { name: tmpYaml } = tmp_1.default.fileSync({ tmpdir: osTmpDir });
     yield fs_1.default.promises.writeFile(tmpYaml, yaml);
     let retVal;
