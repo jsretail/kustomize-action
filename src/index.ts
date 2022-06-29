@@ -177,7 +177,8 @@ const getYaml = async (settings: Settings, logger: Logger) => {
       errors.push(
         ...(await validateYaml(yaml, logger, {
           schemaLocation: settings.kubevalSchemaLocation,
-          kubernetesVersion: settings.kubevalKubernetesVersion
+          kubernetesVersion: settings.kubevalKubernetesVersion,
+          githubToken: settings.kubevalGithubToken
         }))
       )
     );

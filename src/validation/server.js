@@ -18,7 +18,9 @@ const cache = {};
 
 const requestSchema = (reqPath, res, opts = {}) => {
   const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
-  const client = https.request(url, msg => {
+  const client = https.request({...url, headers: {
+    ...(opts.githubToken ? {Authorization: `token ${opts.githubToken}`} : {})
+  }}, msg => {
     res.writeHead(msg.statusCode, msg.headers);
     let data = '';
     msg.on('data', curData => {
@@ -82,7 +84,7 @@ const codeSchema = next => (reqPath, res, opts = {}) => {
 
 const getSchema = codeSchema(schemaCache(requestSchema));
 
-function start(port, schemaLocation) {
+function start(port, schemaLocation, githubToken) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
@@ -90,7 +92,8 @@ function start(port, schemaLocation) {
         function (req, res) {
           try {
             getSchema(req.url, res, {
-              schemaLocation
+              schemaLocation,
+              githubToken
             });
           } catch (err) {
             rej(err);

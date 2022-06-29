@@ -51,6 +51,7 @@ export type Settings = {
   kustomizeArgs: string;
   validateWithKubeVal: boolean;
   kubevalKubernetesVersion?: string;
+  kubevalGithubToken?: string
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
   kubevalSchemaLocation?: string;
@@ -135,6 +136,11 @@ export const getSettings = (isAction: boolean): Settings => {
     'KUBEVAL_SCHEMA_LOCATION'
   );
 
+  const kubevalGithubToken = getSetting(
+    'kubeval-github-token',
+    'KUBEVAL_GITHUB_TOKEN'
+  )
+
   const filterExcludeAnnotations = getSetting(
     'filter-exclude-annotations',
     'FILTER_EXCLUDE_ANNOTATIONS'
@@ -181,6 +187,7 @@ export const getSettings = (isAction: boolean): Settings => {
     validateWithKubeVal:
       resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
     kubevalKubernetesVersion: resolveEnvVars(kubevalKubernetesVersion || ''),
+    kubevalGithubToken: resolveEnvVars(kubevalGithubToken || null),
     kubevalSchemaLocation: resolveEnvVars(kubevalSchemaLocation || undefined),
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
