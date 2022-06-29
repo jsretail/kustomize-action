@@ -50,6 +50,14 @@ inputs:
   ignore-errors-regex:
     description: "Regex to filter out warnings and errors, e.g. '/ignore/i'"
     required: false
+  filter-exclude-resources:
+    description: "Resources to exclude from the output file. For example apps/v1/Deployment or for multiple apps/v1/Deployment,apps/v1/DaemonSet"
+    required: false
+    default: ''
+  filter-exclude-annotations:
+    description: "Resources to exclude by the annotation jsretail.github.io/kustomize-action/filter. Comma seperated for multiple values."
+    required: false
+    default: ''
 outputs:
   yaml:
     description: 'Generated YAML (if VariableOutputAction.outputVariableName is set)'

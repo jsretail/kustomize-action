@@ -26895,6 +26895,7 @@ const validation_1 = __importDefault(__webpack_require__(6722));
 const setup_1 = __webpack_require__(8429);
 const outputs_1 = __webpack_require__(1698);
 const utils_1 = __webpack_require__(1314);
+const resourceFilter_1 = __importDefault(__webpack_require__(4874));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const isAction = !!process.env.GITHUB_EVENT_NAME;
     try {
@@ -26965,8 +26966,15 @@ const getYaml = (settings, logger) => __awaiter(void 0, void 0, void 0, function
     const docs = (yield section('Removing superfluous kustomize resources', () => __awaiter(void 0, void 0, void 0, function* () {
         return cleanYaml_1.removeKustomizeValues(resources, settings.verbose ? logger : undefined);
     })));
+    const filteredDocs = (yield section('Filtering Documents', () => __awaiter(void 0, void 0, void 0, function* () {
+        var _a, _b;
+        return resourceFilter_1.default(docs, settings.verbose ? logger : undefined, {
+            filterExcludeAnnotations: (_a = settings.filterExcludeAnnotations) === null || _a === void 0 ? void 0 : _a.split(','),
+            filterExcludeResources: (_b = settings.filterExcludeResources) === null || _b === void 0 ? void 0 : _b.split(',')
+        });
+    })));
     const cleanedDocs = (yield section('Cleaning up YAML', () => __awaiter(void 0, void 0, void 0, function* () {
-        const cleaned = docs.reduce((a, d) => {
+        const cleaned = filteredDocs.reduce((a, d) => {
             const { doc, modified } = cleanYaml_1.cleanUpYaml(d, settings.verbose ? logger : undefined);
             a.cleanedDocs.push(doc);
             a.modified = a.modified || modified;
@@ -27415,6 +27423,30 @@ exports.ArtifactOutputAction = ArtifactOutputAction;
 
 /***/ }),
 
+/***/ 4874:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const utils_1 = __webpack_require__(1314);
+exports.default = (docs, logger = undefined, { filterExcludeAnnotations = [], filterExcludeResources = [] }) => docs.filter(d => {
+    var _a, _b;
+    const filterAnnotation = (_b = (_a = d
+        .get('metadata')) === null || _a === void 0 ? void 0 : _a.get('annotations')) === null || _b === void 0 ? void 0 : _b.get('jsretail.github.io/kustomize-action/filter');
+    const kind = d.get('kind') || '';
+    const apiVersion = d.get('apiVersion') || '';
+    const toRemove = filterExcludeAnnotations.includes(filterAnnotation) ||
+        filterExcludeResources.includes(`${apiVersion}/${kind}`);
+    if (toRemove) {
+        logger === null || logger === void 0 ? void 0 : logger.log(`removing ${utils_1.getLabel(d)}`);
+    }
+    return !toRemove;
+});
+
+
+/***/ }),
+
 /***/ 8429:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -27538,6 +27570,8 @@ const getSettings = (isAction) => {
     const validateWithKubeVal = getSetting('validate-with-kubeval', 'VALIDATE_WITH_KUBEVAL');
     const kubevalKubernetesVersion = getSetting('kubeval-kubernetes-version', 'KUBEVAL_KUBERNETES_VERSION');
     const kubevalSchemaLocation = getSetting('kubeval-schema-location', 'KUBEVAL_SCHEMA_LOCATION');
+    const filterExcludeAnnotations = getSetting('filter-exclude-annotations', 'FILTER_EXCLUDE_ANNOTATIONS');
+    const filterExcludeResources = getSetting('filter-exclude-resources', 'FILTER_EXCLUDE_RESOURCES');
     const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
     const workspaceDir = utils_1.getWorkspaceRoot();
     const getPath = (p) => path_1.default.isAbsolute(p) ? p : path_1.default.join(workspaceDir, p);
@@ -27572,7 +27606,9 @@ const getSettings = (isAction) => {
         kubevalKubernetesVersion: utils_1.resolveEnvVars(kubevalKubernetesVersion || ''),
         kubevalSchemaLocation: utils_1.resolveEnvVars(kubevalSchemaLocation || undefined),
         reportWarningsAsErrors: utils_1.resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
-        ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined
+        ignoreWarningsErrorsRegex: ignoreRegex ? utils_1.parseRx(ignoreRegex) : undefined,
+        filterExcludeAnnotations: utils_1.resolveEnvVars(filterExcludeAnnotations || undefined),
+        filterExcludeResources: utils_1.resolveEnvVars(filterExcludeResources || undefined)
     };
 };
 exports.getSettings = getSettings;

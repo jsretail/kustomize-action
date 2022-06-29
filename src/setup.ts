@@ -54,6 +54,8 @@ export type Settings = {
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
   kubevalSchemaLocation?: string;
+  filterExcludeAnnotations?: string;
+  filterExcludeResources?: string; 
 };
 
 export const parseAllowedSecrets = (secretString: string) =>
@@ -133,6 +135,16 @@ export const getSettings = (isAction: boolean): Settings => {
     'KUBEVAL_SCHEMA_LOCATION'
   );
 
+  const filterExcludeAnnotations = getSetting(
+    'filter-exclude-annotations',
+    'FILTER_EXCLUDE_ANNOTATIONS'
+  );
+
+  const filterExcludeResources = getSetting(
+    'filter-exclude-resources',
+    'FILTER_EXCLUDE_RESOURCES'
+  )
+
   const kustomizeArgs = getSetting('kustomize-args', 'KUSTOMIZE_ARGS');
 
   const workspaceDir = getWorkspaceRoot();
@@ -172,7 +184,9 @@ export const getSettings = (isAction: boolean): Settings => {
     kubevalSchemaLocation: resolveEnvVars(kubevalSchemaLocation || undefined),
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
-    ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined
+    ignoreWarningsErrorsRegex: ignoreRegex ? parseRx(ignoreRegex) : undefined,
+    filterExcludeAnnotations: resolveEnvVars(filterExcludeAnnotations || undefined),
+    filterExcludeResources: resolveEnvVars(filterExcludeResources || undefined)
   };
 };
 
