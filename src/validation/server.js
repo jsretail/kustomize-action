@@ -24,7 +24,7 @@ const retryOnError = (reqPath, res, opts = {}, fail) => err => {
 
   if (err.code == "ETIMEDOUT") {
     const wait = ((opts.attempts || 0) + 1) * 1000;
-    console.warn(`Request timed out attempting again in ${wait / 1000} seconds ${reqPath}`)
+    console.warn(`Request timed out attempting again in ${Math.round(wait / 1000)} seconds ${reqPath}`)
     setTimeout(() => requestSchema(reqPath, res, { ...opts, attempts: (opts.attempts || 0) + 1 }), wait)
     return
   }
