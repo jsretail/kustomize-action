@@ -17,7 +17,7 @@ const sendError = res => err => {
 const cache = {};
 
 const retryOnError = (reqPath, res, opts = {}, fail) => err => {
-  if (opts.attempts || 0 > 5) {
+  if ((opts.attempts || 0) > 5) {
     fail(err)
     return
   }
