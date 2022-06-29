@@ -55,7 +55,7 @@ const main = async (
     kubernetesVersion,
     schemaLocation,
     githubToken
-  }: { kubeValBin?: string, kubernetesVersion?: string, schemaLocation?: string, githubToken?: string } = {}
+  }: { kubeValBin?: string, kubernetesVersion?: string, schemaLocation?: string, githubToken?: string | undefined } = {}
 ): Promise<string[]> => {
   const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
   const stop = await server.start(port, schemaLocation, githubToken);

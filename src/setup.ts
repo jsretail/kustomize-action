@@ -51,7 +51,7 @@ export type Settings = {
   kustomizeArgs: string;
   validateWithKubeVal: boolean;
   kubevalKubernetesVersion?: string;
-  kubevalGithubToken?: string
+  kubevalGithubToken?: string | undefined;
   reportWarningsAsErrors: boolean;
   ignoreWarningsErrorsRegex: RegExp | undefined;
   kubevalSchemaLocation?: string;
@@ -187,7 +187,7 @@ export const getSettings = (isAction: boolean): Settings => {
     validateWithKubeVal:
       resolveEnvVars(validateWithKubeVal || '').toLowerCase() === 'true',
     kubevalKubernetesVersion: resolveEnvVars(kubevalKubernetesVersion || ''),
-    kubevalGithubToken: resolveEnvVars(kubevalGithubToken || null),
+    kubevalGithubToken: resolveEnvVars(kubevalGithubToken || undefined),
     kubevalSchemaLocation: resolveEnvVars(kubevalSchemaLocation || undefined),
     reportWarningsAsErrors:
       resolveEnvVars(reportWarningsAsErrors || '').toLowerCase() === 'true',
