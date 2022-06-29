@@ -16,30 +16,56 @@ const sendError = res => err => {
 
 const cache = {};
 
+const retryOnError = (reqPath, res, opts = {}, fail) => err => {
+  if (opts.attempts || 0 > 5) {
+    fail(err)
+    return
+  }
+
+  if (err.code == "ETIMEDOUT") {
+    const wait = ((opts.attempts || 0) + 1) * 1000;
+    console.warn(`Request timed out attempting again in ${Math.round(wait / 1000)} seconds ${reqPath}`)
+    setTimeout(() => requestSchema(reqPath, res, { ...opts, attempts: (opts.attempts || 0) + 1 }), wait)
+    return
+  }
+
+  fail(err)
+  return
+}
+
 const requestSchema = (reqPath, res, opts = {}) => {
   const url = new URL((opts.schemaLocation ?? defaultSchemaSite) + reqPath);
-  const client = https.request(url, msg => {
-    res.writeHead(msg.statusCode, msg.headers);
-    let data = '';
-    msg.on('data', curData => {
-      data += curData;
-    });
-    msg.on('end', () => {
-      addToCache(data, msg);
-      res.end(data);
-    });
-  });
-  client.on('error', sendError(res));
+  const client = https.request(
+    {
+      host: url.host,
+      path: url.pathname,
+      port: url.port,
+      protocol: url.protocol,
+      headers: {
+        ...(opts.githubToken
+          ? {Authorization: `token ${opts.githubToken}`}
+          : {})
+      }
+    },
+    msg => {
+      res.writeHead(msg.statusCode, msg.headers);
+      let data = '';
+      msg.on('data', curData => {
+        data += curData;
+      });
+      msg.on('end', () => {
+        addToCache(data, msg);
+        res.end(data);
+      });
+    }
+  );
+  client.on('error', retryOnError(reqPath, res, opts, sendError(res)));
   client.end();
   const addToCache = (data, msg) => {
     const roundedStatusCode = Math.round(msg.statusCode / 100) * 100;
     if (roundedStatusCode != 200) {
       console.warn(msg.statusCode + '\t' + url.toString());
       // cache[reqPath] = { code: roundedStatusCode };
-      return;
-    }
-    if (msg.headers['content-type'] != 'application/json') {
-      console.warn('Cant cache ' + msg.headers['content-type']);
       return;
     }
     let json;
@@ -82,21 +108,20 @@ const codeSchema = next => (reqPath, res, opts = {}) => {
 
 const getSchema = codeSchema(schemaCache(requestSchema));
 
-function start(port, schemaLocation) {
+function start(port, schemaLocation, githubToken) {
   return new Promise((started, rej) => {
     let server;
     const promise = new Promise((res, rej) => {
-      server = http.createServer(
-        function (req, res) {
-          try {
-            getSchema(req.url, res, {
-              schemaLocation
-            });
-          } catch (err) {
-            rej(err);
-          }
+      server = http.createServer(function (req, res) {
+        try {
+          getSchema(req.url, res, {
+            schemaLocation,
+            githubToken
+          });
+        } catch (err) {
+          rej(err);
         }
-      );
+      });
       server.listen(port);
       started(
         () =>

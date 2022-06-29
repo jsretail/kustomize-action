@@ -53,11 +53,12 @@ const main = async (
   {
     kubeValBin,
     kubernetesVersion,
-    schemaLocation
-  }: { kubeValBin?: string, kubernetesVersion?: string, schemaLocation?: string } = {}
+    schemaLocation,
+    githubToken
+  }: { kubeValBin?: string, kubernetesVersion?: string, schemaLocation?: string, githubToken?: string | undefined } = {}
 ): Promise<string[]> => {
   const port = 1025 + (Math.floor(Math.random() * 100000) % (65535 - 1025));
-  const stop = await server.start(port, schemaLocation);
+  const stop = await server.start(port, schemaLocation, githubToken);
   const {name: tmpYaml} = tmp.fileSync({tmpdir:osTmpDir});
   await fs.promises.writeFile(tmpYaml, yaml);
   let retVal;

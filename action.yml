@@ -39,6 +39,10 @@ inputs:
   kubeval-schema-location:
     description: Schema location for kubeval to use.
     required: false
+  kubeval-github-token:
+    description: 'Github secret to download kubeval schema resources'
+    required: false
+    default: null
   kustomize-args:
     description: "Arguments to run kustomize with"
     required: false

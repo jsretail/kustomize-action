@@ -1,1 +1,1 @@
-export function start(port:number, schemaLocation?: string) : ()=>Promise<()=>Promise<void>>;
+export function start(port:number, schemaLocation?: string, githubToken?: string | undefined) : ()=>Promise<()=>Promise<void>>;
